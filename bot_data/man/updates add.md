@@ -1,0 +1,10 @@
+Add the items to the updates system. Requires the presence of an anime-and-manga-updates guild-channel database entry.
+
+Arguments:
+* `url`: An URL belonging to a manga from Guya.moe or MangaDex or a HorribleSubs torrent on Nyaa.si. Check the `%guyamoe`, `%mangadex` and `%nyaasi` commands for more info. Multiple URLs can be provided, as long as they are separated by spaces.
+
+Examples:
+* `%updates add https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/`
+* `%updates add https://mangadex.org/title/31477/solo-leveling`
+* `%updates add https://nyaa.si/view/1276233`
+* `%updates add https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/ https://mangadex.org/title/31477/solo-leveling https://nyaa.si/view/1276233`
