@@ -6,7 +6,7 @@ Code can be given two ways:
 2. Triple backticks can be used to show a code block. This way, multiple blocks can be run with one command. The language can be omitted, or if included, must be either "bash" or "shell".
 
 Examples:
-* `%bash echo 5`
+* `{prefix}bash echo 5`
 * ```shell
 %bash ``​`echo 5``​` `​``shell
 echo 5``​`

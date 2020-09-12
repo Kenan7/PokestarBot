@@ -16,14 +16,14 @@ Note: If AM/PM is not provided, it is assumed to be 24-hour time.
 * X days ago: `x` where x is a number. (Assumed to begin at midnight for that day)
 
 Examples:
-* `%mass_delete after_time today`
-* `%mass_delete after_time #general today`
-* `%mass_delete after_time #general @PokestarBot#9763 today`
-* `%mass_delete after_time #general @PokestarBot#9763 @Rythm#3722 today`
-* `%mass_delete after_time yesterday`
-* `%mass_delete after_time sunday`
-* `%mass_delete after_time 5`
-* `%mass_delete after_time 9/2/20`
-* `%mass_delete after_time 23:00:00`
-* `%mass_delete after_time 11:00:00 PM`
-* `%mass_delete after_time 9/2/20 07:00:00 PM`
+* `{prefix}mass_delete after_time today`
+* `{prefix}mass_delete after_time #general today`
+* `{prefix}mass_delete after_time #general @PokestarBot#9763 today`
+* `{prefix}mass_delete after_time #general @PokestarBot#9763 @Rythm#3722 today`
+* `{prefix}mass_delete after_time yesterday`
+* `{prefix}mass_delete after_time sunday`
+* `{prefix}mass_delete after_time 5`
+* `{prefix}mass_delete after_time 9/2/20`
+* `{prefix}mass_delete after_time 23:00:00`
+* `{prefix}mass_delete after_time 11:00:00 PM`
+* `{prefix}mass_delete after_time 9/2/20 07:00:00 PM`

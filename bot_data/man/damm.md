@@ -4,6 +4,6 @@ You can also specify text to output along with the command. The bot will say any
 
 **Examples**:
 
-* `%damm`: Sends the image without any text
-* `%damm Test`: Sends the image with the text `Test`
-* `%damm "Test"` Sends the image with the text `"Test"`
+* `{prefix}damm`: Sends the image without any text
+* `{prefix}damm Test`: Sends the image with the text `Test`
+* `{prefix}damm "Test"` Sends the image with the text `"Test"`

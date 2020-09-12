@@ -22,7 +22,6 @@ async def break_into_groups(text: Optional[str] = None, heading: str = "", templ
         newmsg = msg + (line if not line_template else line_template.format(line)) + "\n"
         if len(newmsg.rstrip()) > allocation:
             return_lines.append(msg.rstrip() + ending)
-            logger.debug("Output went past limit.")
             msg = template + (line if not line_template else line_template.format(line)) + "\n"
         else:
             msg = newmsg

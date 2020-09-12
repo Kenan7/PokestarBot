@@ -6,7 +6,7 @@ Arguments:
 * `amount`: The amount of messages to delete.
 
 Examples:
-* `%mass_delete 50`
-* `%mass_delete #general 50`
-* `%mass_delete #general @PokestarBot#9763 50`
-* `%mass_delete #general @PokestarBot#9763 @Rythm#3722 50`
+* `{prefix}mass_delete 50`
+* `{prefix}mass_delete #general 50`
+* `{prefix}mass_delete #general @PokestarBot#9763 50`
+* `{prefix}mass_delete #general @PokestarBot#9763 @Rythm#3722 50`

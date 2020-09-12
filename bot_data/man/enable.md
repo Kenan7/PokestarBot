@@ -4,5 +4,5 @@ Arguments:
 * `command`: The command or subcommand to enable.
 
 Examples:
-* `%enable echo`
-* `%enable role add`
+* `{prefix}enable echo`
+* `{prefix}enable role add`

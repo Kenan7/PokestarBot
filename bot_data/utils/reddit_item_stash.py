@@ -44,6 +44,8 @@ class RedditItemStash(collections.abc.Mapping, Mapping[str, Union[BoundedList, B
 
     def add(self, item: Union[asyncpraw.models.Submission, asyncpraw.models.Comment, asyncpraw.models.ModAction], item_second: Optional[Any] = None):
         subreddit = str(item.subreddit) if hasattr(item, "subreddit") else "all"
+        if subreddit == "all" and hasattr(item, "subreddit_name_prefixed"):
+            subreddit = item.subreddit_name_prefixed
         container = self.setdefault(subreddit)
         if isinstance(container, BoundedList):
             return container.append(item)
@@ -51,10 +53,13 @@ class RedditItemStash(collections.abc.Mapping, Mapping[str, Union[BoundedList, B
             container[item] = item_second
 
     def check(self, item: Union[asyncpraw.models.Submission, asyncpraw.models.Comment, asyncpraw.models.ModAction],
-              item_second: Optional[Any] = None) -> bool:
+              item_second: Optional[Any] = None, _subreddit_name: Optional[str] = None) -> bool:
         """Check if the object is in any of the instance's lists/dictionaries."""
-        if hasattr(item, "subreddit"):
-            subreddit_name = str(item.subreddit)
+        if hasattr(item, "subreddit") or _subreddit_name:
+            if _subreddit_name:
+                subreddit_name = _subreddit_name
+            else:
+                subreddit_name = str(item.subreddit)
             if value := getattr(self, subreddit_name, None):
                 if isinstance(value, BoundedDict):
                     if item not in value:
@@ -65,6 +70,8 @@ class RedditItemStash(collections.abc.Mapping, Mapping[str, Union[BoundedList, B
                     return item in value
             else:
                 return False
+        elif hasattr(item, "subreddit_name_prefixed"):
+            return self.check(item, item_second=item_second, _subreddit_name=_subreddit_name)
         else:  # Fallback, search all subreddits
             for container in vars(self).values():
                 if isinstance(container, BoundedDict):

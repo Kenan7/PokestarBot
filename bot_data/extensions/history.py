@@ -62,7 +62,7 @@ class History(PokestarBotCog):
         except discord.Forbidden:
             embed.add_field(name="Note",
                             value="The bot attempted to DM you this info, but was unable to. Check that you have allowed DMs from other people in "
-                                  "this server.")
+                                  "this Guild.")
             channel: discord.TextChannel = self.bot.get_channel_data(ctx.guild.id, "bot-spam")
             if channel is None:
                 return

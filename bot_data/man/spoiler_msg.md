@@ -8,6 +8,6 @@ Boolean Values:
 * No: `n` / `n` / `false` / `0` / `off`
 
 Examples:
-* `%spoiler_msg`
-* `%spoiler_msg y`
-* `%spoiler_msg no`
+* `{prefix}spoiler_msg`
+* `{prefix}spoiler_msg y`
+* `{prefix}spoiler_msg no`

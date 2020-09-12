@@ -1,8 +1,8 @@
 Get a list of timezones.
 
 Arguments:
-* `prefix`: The prefix of a timezone. A list can be gotten from `%timezones prefix`.
+* `prefix`: The prefix of a timezone. A list can be gotten from `{prefix}timezones prefix`.
 
 Examples:
-* `%timezones`
-* `%timezones America`
+* `{prefix}timezones`
+* `{prefix}timezones America`

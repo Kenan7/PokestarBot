@@ -6,5 +6,5 @@ Arguments:
 * `channel`: The channel to delete embeds for. Defaults to the current channel.
 
 Examples:
-* `%clean_embeds`
-* `%clean_embeds #bot-stuff`
+* `{prefix}clean_embeds`
+* `{prefix}clean_embeds #bot-stuff`

@@ -10,7 +10,7 @@ import aiosqlite
 import discord.ext.commands
 
 from . import PokestarBotCog
-from ..utils import ConformingIterator, CustomAuthorContext, Embed, StopCommand, send_embeds_fields
+from ..utils import ConformingIterator, CustomContext, Embed, StopCommand, send_embeds_fields
 
 if TYPE_CHECKING:
     from ..bot import PokestarBot
@@ -34,6 +34,7 @@ class Waifu(PokestarBotCog):
     def __init__(self, bot: "PokestarBot"):
         super().__init__(bot)
         self.guide_data = {}
+        self.embed.add_check(self.bot.has_channel("bot-spam"))
 
     def log_and_run(self, /, sql: str, arguments: Optional[Iterable[Union[str, int, float, bool, None]]] = None, *,
                     method: Literal["execute", "executemany", "executescript", "execute_insert", "execute_fetchall"] = "execute"):
@@ -1079,6 +1080,21 @@ class Waifu(PokestarBotCog):
                 embed.add_field(name="Waifu Bracket", value=str(bracket_id))
                 await ctx.send(embed=embed)
 
+    @waifu_war.command(brief="Get a convenient Embed that lets people start voting.")
+    async def embed(self, ctx: discord.ext.commands.Context):
+        await self.get_conn()
+        chan = self.bot.get_channel_data(ctx.guild.id, "bot-spam")
+        bracket_id = await self.get_voting(ctx.guild.id)
+        if bracket_id is None:
+            return await ctx.send(embed=Embed(ctx, title="No Voting Bracket Yet",
+                                              description="No brackets are marked as Votable. Wait for a bracket to be marked as votable.",
+                                              color=discord.Color.red()))
+        else:
+            msg = await ctx.send(embed=Embed(ctx, title="Start Voting",
+                                             description=f"In order to vote, type `%ww d 1` in the {chan.mention} channel. Or, click the check mark "
+                                                         f"below this item, and then go to {chan.mention}."))
+            await msg.add_reaction("✅")
+
     @waifu_war.command(brief="See all waifus in the global list of waifus.",
                        aliases=["ws", "all_waifu", "all_waifus", "aws", "allwaifu", "allwaifus"])
     async def waifus(self, ctx: discord.ext.commands.Context):
@@ -1155,84 +1171,66 @@ class Waifu(PokestarBotCog):
         if user.id == self.bot.user.id or user.bot or msg.author.id != self.bot.user.id:
             return
         embed: discord.Embed = msg.embeds[0]
-        ctx: CustomAuthorContext = await self.bot.get_context(msg, cls=CustomAuthorContext)
+        ctx: CustomContext = await self.bot.get_context(msg, cls=CustomContext)
         ctx.author = user
         if embed.title == "Voted":
-            logger.debug("Hit Voted")
             if "✅" in str(emoji):
-                logger.debug("Hit check mark")
                 bracket_id = int(embed.fields[0].value)
                 division_id = int(embed.fields[1].value)
                 return await self.division(ctx, bracket_id, division_id + 1)
             elif "🚫" in str(emoji):
-                logger.debug("Hit unblock")
                 waifu_id = int(embed.fields[2].value)
                 return await self.un_vote(ctx, id_or_name=waifu_id)
         elif embed.title.startswith("Division "):
-            logger.debug("Hit Division")
             bracket_id = int(embed.fields[0].value)
             division_id = int(embed.fields[1].value)
             right_id = division_id * 2
             left_id = right_id - 1
             if "⬅️" in str(emoji):
-                logger.debug("Hit Left Arrow")
                 return await self.vote(ctx, id_or_name=left_id)
             elif "➡️" in str(emoji):
-                logger.debug("Hit Right Arrow")
                 return await self.vote(ctx, id_or_name=right_id)
             elif "ℹ" in str(emoji):
-                logger.debug("Hit left I")
                 return await self.waifu(ctx, bracket_id, id_or_name=left_id)
             elif "🇮" in str(emoji):
-                logger.debug("Hit right I")
                 return await self.waifu(ctx, bracket_id, id_or_name=right_id)
             elif "🚫" in str(emoji):
-                logger.debug("Hit skip")
                 return await self.division(ctx, bracket_id, division_id + 1)
         elif embed.title == "Vote Removed":
-            logger.debug("Hit Vote Removed")
             if "✅" in str(emoji):
-                logger.debug("Hit check mark")
                 bracket_id = int(embed.fields[0].value)
                 division_id = int(embed.fields[1].value)
                 return await self.division(ctx, bracket_id, division_id)
         elif embed.title == "Already Voted":
-            logger.debug("Hit Already Voted")
             if "🚫" in str(emoji):
-                logger.debug("Hit unblock")
                 waifu_id = int(embed.fields[3].value)
                 return await self.un_vote(ctx, id_or_name=waifu_id)
         elif embed.title == "Never Participated":
-            logger.debug("Hit Never Participated")
             if "✅" in str(emoji):
-                logger.debug("Hit check mark")
                 return await self.guide(ctx)
         elif embed.title == "Previous Division":
-            logger.debug("Hit Previous Division")
             if "✅" in str(emoji):
-                logger.debug("Hit check mark")
                 bracket_id = int(embed.fields[0].value)
                 division_id = int(embed.fields[1].value)
                 return await self.division(ctx, bracket_id, division_id + 1)
         elif embed.title == "Guide":
-            logger.debug("Hit Guide (step 0)")
             if "✅" in str(emoji):
-                logger.debug("Hit check mark")
                 return await self.guide_step_1(ctx)
         elif embed.title == "Step 1: Summoning a Division":
-            logger.debug("Hit Guide (step 1)")
             if "✅" in str(emoji):
-                logger.debug("Hit check mark")
                 return await self.division(ctx, 1)
         elif embed.title == "Start Guide":
             if "✅" in str(emoji):
-                logger.debug("Hit check mark")
                 return await self.guide(ctx)
             elif "🚫" in str(emoji):
-                logger.debug("Hit unblock")
                 bracket_id = int(embed.fields[0].value)
                 division_id = int(embed.fields[1].value)
                 return await self.division(ctx, bracket_id, division_id, _continue=True)
+        elif embed.title == "Start Voting":
+            if "✅" in str(emoji):
+                chan = self.bot.get_channel_data(ctx.guild, "bot-spam")
+                ctx.channel = chan
+                return await self.division(ctx, 1)
 
     @discord.ext.commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -1243,9 +1241,6 @@ class Waifu(PokestarBotCog):
         guild: discord.Guild = self.bot.get_guild(payload.guild_id)
         user: discord.Member = guild.get_member(payload.user_id)
         emoji = payload.emoji
-        logger.debug(message)
-        logger.debug(user)
-        logger.debug(emoji)
         await self.on_reaction(message, emoji, user)
 
 

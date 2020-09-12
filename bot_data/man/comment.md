@@ -6,6 +6,6 @@ Arguments:
 The base 36 ID can be found in the last part of the url. In this URL: `https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more/g46dndt`, the comment Base36 ID is `g46dndt`.
 
 Examples:
-* `%comment https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more/g46dndt`
-* `%comment g46rltl`
-* `%comment https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more/g46dndt g46rltl`
+* `{prefix}comment https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more/g46dndt`
+* `{prefix}comment g46rltl`
+* `{prefix}comment https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more/g46dndt g46rltl`

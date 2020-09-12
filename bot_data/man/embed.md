@@ -3,4 +3,4 @@ Display a custom Embed. Embeds are Guild-specific, meaning that you can only use
 Arguments:
 * `name`: The name of the Embed
 
-Example: `%embed test`
+Example: `{prefix}embed test`

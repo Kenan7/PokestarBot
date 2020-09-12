@@ -4,6 +4,6 @@ You can also specify text to output along with the command. The bot will say any
 
 **Examples**:
 
-* `%ascend`: Sends the image without any text
-* `%ascend Test`: Sends the image with the text `Test`
-* `%ascend "Test"` Sends the image with the text `"Test"`
+* `{prefix}ascend`: Sends the image without any text
+* `{prefix}ascend Test`: Sends the image with the text `Test`
+* `{prefix}ascend "Test"` Sends the image with the text `"Test"`

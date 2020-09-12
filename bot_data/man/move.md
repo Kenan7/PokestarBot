@@ -11,9 +11,9 @@ User Format:
 * All users in all voice channels: `all`
 
 Examples:
-* `%move general music`
-* `%move general @PokestarBot#9763`
-* `%move general @PokestarBot#9763 @Rythm#3722`
-* `%move general "epic gamer"`
-* `%move general all`
-* `%move general music @PokestarBot#9763 "epic gamer"`
+* `{prefix}move general music`
+* `{prefix}move general @PokestarBot#9763`
+* `{prefix}move general @PokestarBot#9763 @Rythm#3722`
+* `{prefix}move general "epic gamer"`
+* `{prefix}move general all`
+* `{prefix}move general music @PokestarBot#9763 "epic gamer"`

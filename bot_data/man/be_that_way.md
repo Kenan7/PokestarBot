@@ -4,6 +4,6 @@ You can also specify text to output along with the command. The bot will say any
 
 **Examples**:
 
-* `%bethatway`: Sends the image without any text
-* `%bethatway Test`: Sends the image with the text `Test`
-* `%bethatway "Test"` Sends the image with the text `"Test"`
+* `{prefix}bethatway`: Sends the image without any text
+* `{prefix}bethatway Test`: Sends the image with the text `Test`
+* `{prefix}bethatway "Test"` Sends the image with the text `"Test"`

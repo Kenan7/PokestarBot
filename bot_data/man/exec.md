@@ -7,7 +7,7 @@ Examples:
 
 Note: Do not copy-paste the examples, as they are using invisible characters, and will not work.
 
-* `%exec print(2+2)`
+* `{prefix}exec print(2+2)`
 * ```
 %exec ``​`python
 def x():

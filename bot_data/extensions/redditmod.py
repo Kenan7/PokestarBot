@@ -12,29 +12,45 @@ import discord.ext.tasks
 
 from . import PokestarBotCog
 from ..creds import client_id, client_secret, refresh_token, user_agent
-from ..utils import BoundedDict, CustomAuthorContext, Embed, RedditItemStash, aenumerate, send_embeds_fields
+from ..utils import BoundedDict, CustomContext, Embed, RedditItemStash, aenumerate, send_embeds_fields
 
 if TYPE_CHECKING:
     from ..bot import PokestarBot
 
 logger = logging.getLogger(__name__)
 
-reddit = asyncpraw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent, refresh_token=refresh_token)
-
 
 class RedditMod(PokestarBotCog):
+    SUBMITTABLE_ACTIONS = {"approvelink": "Approved Submission", "approvecomment": "Approved Comment", "ignorereports": "Ignored Reports For Item",
+                           "removelink": "Removed Link", "removecomment": "Removed Comment", "sticky": "Stickied Item",
+                           "distinguish": "Distinguished Item", "spamcomment": "Spam Comment", "spamlink": "Spam Link", "unsticky": "Unstickied Item",
+                           "lock": "Locked Item", "unlock": "Unlocked Item", "marknsfw": "Marked Item as NSFW",
+                           "unignorereports": "Unignored Reports For Item", "spoiler": "Marked Item As Spoiler",
+                           "unspoiler": "Unmarked Item As Spoiler", "editflair": "Edit Flair Of Item"}
+    USER_ACTIONS = {"addcontributor": "Add Contributor", "banuser": "Ban User", "muteuser": "Mute User", "removecontributor": "Remove Contributor",
+                    "acceptmoderatorinvite": "Accept Moderator Invite", "invitemoderator": "Invite Moderator", "unbanuser": "Unban User",
+                    "unmuteuser": "Unmute User", "setpermissions": "Set User Permissions"}
+
     @property
     def conn(self):
         return self.bot.conn
 
+    @property
+    def reddit(self):
+        return asyncpraw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent, refresh_token=refresh_token,
+                                requestor_kwargs={"session": self.bot.session})
+
     def __init__(self, bot: "PokestarBot"):
         super().__init__(bot)
         self.modqueue = RedditItemStash("modqueue", itemtype=BoundedDict)
-        self.modlog = RedditItemStash("modlog")
+        self.modlog = RedditItemStash("modlog", bound=20)
         self.unmoderated = RedditItemStash("unmoderated")
+        self.modqueue_started = []
+        self.modlog_started = []
+        self.unmoderated_started = []
         self.bot.add_check_recursive(self.modqueue_command, self.bot.has_channel("modqueue"))
-        # self.bot.add_check_recursive(self.modlog_command, self.bot.has_channel("modlog"))
-        # self.bot.add_check_recursive(self.unmoderated_command, self.bot.has_channel("unmoderated"))
+        self.bot.add_check_recursive(self.modlog_command, self.bot.has_channel("modlog"))
+        self.bot.add_check_recursive(self.unmoderated_command, self.bot.has_channel("unmoderated"))
         self.modqueue_task.start()
         self.modlog_task.start()
         self.unmoderated_task.start()
@@ -59,9 +75,10 @@ class RedditMod(PokestarBotCog):
                 NULL, UNIQUE(SUBREDDIT_NAME, GUILD_ID))"""):
             pass
 
-    @discord.ext.tasks.loop(seconds=20)
+    @discord.ext.tasks.loop(minutes=2)
     async def modqueue_task(self):
         await self.pre_create()
+        await self.bot.load_session()
         async with self.conn.execute("""SELECT DISTINCT SUBREDDIT_NAME FROM MODQUEUE""") as cursor:
             data = await cursor.fetchall()
         for subreddit_name, in data:
@@ -69,7 +86,7 @@ class RedditMod(PokestarBotCog):
                 data2 = await cursor.fetchall()
             guilds = [guild for guild, in data2]
             try:
-                async for item in (await reddit.subreddit(subreddit_name)).mod.modqueue(limit=10):
+                async for item in (await self.reddit.subreddit(subreddit_name)).mod.modqueue(limit=10):
                     await self.modqueue_item(item, guilds)
             except Exception as e:
                 logger.warning("Unable to get items for subreddit r/%s", subreddit_name, exc_info=e)
@@ -81,6 +98,9 @@ class RedditMod(PokestarBotCog):
             return
         for guild in guilds:
             if channel := self.bot.get_channel_data(guild, "modqueue"):
+                if channel not in self.modqueue_started:
+                    await channel.send("-" * 20 + "New Modqueue Session" + "-" * 20)
+                    self.modqueue_started.append(channel)
                 embed = discord.Embed(title="New Modqueue Item", timestamp=datetime.datetime.utcfromtimestamp(item.created_utc),
                                       url="https://www.reddit.com" + item.permalink)
                 embed.add_field(name="Subreddit",
@@ -90,8 +110,9 @@ class RedditMod(PokestarBotCog):
                 embed.add_field(name="# Of Reports", value=str(item.num_reports))
                 fields = [("Mod Reports", "\n".join(
                     [f"u/{user}: {reason}" for reason, user in item.mod_reports + (getattr(item, "mod_reports_dismissed", []) or [])]) or "None"),
-                          ("User Reports", "\n".join([f"{num} Users: {reason}" for reason, num in item.user_reports]) or "None"), ("Author",
-                                                                                                                                   f"[{getattr(item.author, 'name', '[deleted]') or '[deleted]'}](https://www.reddit.com/user/{getattr(item.author, 'name', '[deleted]') or '[deleted]'})")]
+                          ("User Reports", "\n".join([f"{num} Users: {reason}" for reason, num in item.user_reports]) or "None"),
+                          ("Author", f"[{getattr(item.author, 'name', '[deleted]') or '[deleted]'}]"
+                                     f"(https://www.reddit.com/user/{getattr(item.author, 'name', '[deleted]') or '[deleted]'})")]
                 if isinstance(item, asyncpraw.models.Comment):
                     description = item.body
                     if len(description) > 1024:
@@ -122,9 +143,10 @@ class RedditMod(PokestarBotCog):
 
     @modqueue_command.command(name="add", brief="Add a subreddit to the Guild's modqueue channel.", usage="subreddit [subreddit]")
     async def modqueue_add(self, ctx: discord.ext.commands.Context, *subreddits: str):
+        await self.bot.load_session()
         for subreddit in subreddits:
             try:
-                subreddit_obj = await reddit.subreddit(subreddit, fetch=True)
+                subreddit_obj = await self.reddit.subreddit(subreddit, fetch=True)
             except asyncprawcore.exceptions.Redirect:
                 embed = Embed(ctx, title="Subreddit Does Not Exist", description="The specified subreddit does not exist.", color=discord.Color.red())
                 embed.add_field(name="Subreddit", value=f"r/{subreddit}")
@@ -170,9 +192,101 @@ class RedditMod(PokestarBotCog):
     async def modqueue_loop(self, ctx: discord.ext.commands.Context):
         await self.bot.loop_stats(ctx, self.modqueue_task, "Modqueue")
 
-    @discord.ext.tasks.loop(seconds=20)
+    @modqueue_loop.command(brief="Start the loop")
+    @discord.ext.commands.is_owner()
+    async def start(self, ctx: discord.ext.commands.Context):
+        self.modqueue_task.start()
+        await ctx.send(embed=Embed(ctx, title="Loop Started", description="The loop has been started.", color=discord.Color.green()))
+
+    @modqueue_loop.command(brief="Stop the loop")
+    @discord.ext.commands.is_owner()
+    async def stop(self, ctx: discord.ext.commands.Context):
+        self.modqueue_task.stop()
+        await ctx.send(embed=Embed(ctx, title="Loop Stopped", description="The loop has been stopped.", color=discord.Color.green()))
+
+    @modqueue_loop.command(brief="Restart the loop")
+    @discord.ext.commands.is_owner()
+    async def restart(self, ctx: discord.ext.commands.Context):
+        self.modqueue_task.restart()
+        await ctx.send(embed=Embed(ctx, title="Loop Restarted", description="The loop has been restarted.", color=discord.Color.green()))
+
+    @discord.ext.commands.group(name="unmoderated", invoke_without_command=True, brief="Manage the unmoderated")
+    async def unmoderated_command(self, ctx: discord.ext.commands.Context):
+        await self.bot.generic_help(ctx)
+
+    @unmoderated_command.command(name="add", brief="Add a subreddit to the Guild's unmoderated channel.", usage="subreddit [subreddit]")
+    async def unmoderated_add(self, ctx: discord.ext.commands.Context, *subreddits: str):
+        await self.bot.load_session()
+        for subreddit in subreddits:
+            try:
+                subreddit_obj = await self.reddit.subreddit(subreddit, fetch=True)
+            except asyncprawcore.exceptions.Redirect:
+                embed = Embed(ctx, title="Subreddit Does Not Exist", description="The specified subreddit does not exist.", color=discord.Color.red())
+                embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+                await ctx.send(embed=embed)
+            else:
+                try:
+                    async for _ in subreddit_obj.mod.removal_reasons:
+                        break
+                except (asyncpraw.exceptions.PRAWException, asyncprawcore.exceptions.AsyncPrawcoreException):
+                    embed = Embed(ctx, title="No Mod Permissions",
+                                  description="The Reddit account used by the bot does not have the appropriate permissions.",
+                                  color=discord.Color.red())
+                    embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+                    await ctx.send(embed=embed)
+                else:
+                    try:
+                        async with self.bot.conn.execute("""INSERT INTO UNMODERATED(SUBREDDIT_NAME, GUILD_ID) VALUES (?, ?)""",
+                                                         [subreddit, ctx.guild.id]):
+                            pass
+                    except sqlite3.IntegrityError:
+                        embed = Embed(ctx, title="Subreddit Exists", description="The subreddit is already part of the Guild's unmoderated.",
+                                      color=discord.Color.red())
+                    else:
+                        embed = Embed(ctx, title="Subreddit Added to Unmoderated",
+                                      description="The subreddit has been added to the Guild's unmoderated database.", color=discord.Color.green())
+                    embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+                    await ctx.send(embed=embed)
+
+    @unmoderated_command.command(name="remove", brief="Remove a subreddit from the Guild's unmoderated channel.", usage="subreddit [subreddit]",
+                                 aliases=["delete"])
+    async def unmoderated_remove(self, ctx: discord.ext.commands.Context, *subreddits: str):
+        for subreddit in subreddits:
+            async with self.bot.conn.execute("""DELETE FROM UNMODERATED WHERE SUBREDDIT_NAME==? AND GUILD_ID==?""", [subreddit, ctx.guild.id]):
+                pass
+            embed = Embed(ctx, title="Subreddit Removed From Unmoderated",
+                          description="The subreddit has been removed from the Guild's unmoderated database.",
+                          color=discord.Color.green())
+            embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+            await ctx.send(embed=embed)
+
+    @unmoderated_command.group(name="loop", brief="Get the status of the unmoderated loop.", aliases=["unmoderated_loop", "unmoderatedloop"],
+                               invoke_without_command=True)
+    async def unmoderated_loop(self, ctx: discord.ext.commands.Context):
+        await self.bot.loop_stats(ctx, self.unmoderated_task, "Unmoderated")
+
+    @unmoderated_loop.command(brief="Start the loop")
+    @discord.ext.commands.is_owner()
+    async def start(self, ctx: discord.ext.commands.Context):
+        self.unmoderated_task.start()
+        await ctx.send(embed=Embed(ctx, title="Loop Started", description="The loop has been started.", color=discord.Color.green()))
+
+    @unmoderated_loop.command(brief="Stop the loop")
+    @discord.ext.commands.is_owner()
+    async def stop(self, ctx: discord.ext.commands.Context):
+        self.unmoderated_task.stop()
+        await ctx.send(embed=Embed(ctx, title="Loop Stopped", description="The loop has been stopped.", color=discord.Color.green()))
+
+    @unmoderated_loop.command(brief="Restart the loop")
+    @discord.ext.commands.is_owner()
+    async def restart(self, ctx: discord.ext.commands.Context):
+        self.unmoderated_task.restart()
+        await ctx.send(embed=Embed(ctx, title="Loop Restarted", description="The loop has been restarted.", color=discord.Color.green()))
+
+    @discord.ext.tasks.loop(minutes=2)
     async def unmoderated_task(self):
         await self.pre_create()
+        await self.bot.load_session()
         async with self.conn.execute("""SELECT DISTINCT SUBREDDIT_NAME FROM UNMODERATED""") as cursor:
             data = await cursor.fetchall()
         for subreddit_name, in data:
@@ -180,23 +294,197 @@ class RedditMod(PokestarBotCog):
                 data2 = await cursor.fetchall()
             guilds = [guild for guild, in data2]
             try:
-                async for item in (await reddit.subreddit(subreddit_name)).mod.unmoderated(limit=10):
+                async for item in (await self.reddit.subreddit(subreddit_name)).mod.unmoderated(limit=10):
                     await self.unmoderated_item(item, guilds)
             except Exception as e:
                 logger.warning("Unable to get items for subreddit r/%s", subreddit_name, exc_info=e)
 
-    @discord.ext.tasks.loop(seconds=20)
+    async def unmoderated_item(self, item: Union[asyncpraw.models.Submission, asyncpraw.models.Comment], guilds: List[int]):
+        if not self.unmoderated.check(item):
+            self.unmoderated.add(item)
+        else:
+            return
+        for guild in guilds:
+            if channel := self.bot.get_channel_data(guild, "unmoderated"):
+                if channel not in self.unmoderated_started:
+                    await channel.send("-" * 20 + "New Unmoderated Session" + "-" * 20)
+                    self.unmoderated_started.append(channel)
+                embed = discord.Embed(title="New Unmoderated Item", timestamp=datetime.datetime.utcfromtimestamp(item.created_utc),
+                                      url="https://www.reddit.com" + item.permalink)
+                embed.add_field(name="Subreddit",
+                                value=f"[{item.subreddit.display_name}](https://www.reddit.com/r/{item.subreddit.display_name})")
+                embed.add_field(name="Item Type", value=item.__class__.__name__)
+                embed.add_field(name="Fullname", value=item.fullname)
+                fields = [("Author", f"[{getattr(item.author, 'name', '[deleted]') or '[deleted]'}]"
+                                     f"(https://www.reddit.com/user/{getattr(item.author, 'name', '[deleted]') or '[deleted]'})")]
+                description = item.selftext or item.url
+                if len(description) > 1024:
+                    description = description[:1021] + "..."
+                fields.extend([("Title", item.title), ("Description", description)])
+                image_url = item.url
+                if not (not image_url.endswith(".jpg") and not image_url.endswith(".png") and not image_url.endswith(".jpeg")):
+                    embed.set_image(url=image_url)
+                if hasattr(item, "gallery_data"):  # Gallery
+                    fields.append(("Is Gallery", "True"))
+                msg = (await send_embeds_fields(channel, embed, fields))[0]
+                await msg.add_reaction("✅")
+                await msg.add_reaction("🚫")
+                await msg.add_reaction("📛")
+                await msg.add_reaction("🔞")
+
+    @discord.ext.tasks.loop(minutes=2)
     async def modlog_task(self):
         await self.pre_create()
-        async with self.conn.execute("""SELECT SUBREDDIT_NAME, GUILD_ID FROM MODLOG""") as cursor:
+        await self.bot.load_session()
+        async with self.conn.execute("""SELECT DISTINCT SUBREDDIT_NAME FROM MODLOG""") as cursor:
             data = await cursor.fetchall()
-        for subreddit_name, guild_id in data:
-            guild = self.bot.get_guild(guild_id)
+        for subreddit_name, in data:
+            async with self.conn.execute("""SELECT GUILD_ID FROM MODLOG WHERE SUBREDDIT_NAME==?""", [subreddit_name]) as cursor:
+                data2 = await cursor.fetchall()
+            guilds = [guild for guild, in data2]
             try:
-                async for item in (await reddit.subreddit(subreddit_name)).mod.modlog(limit=10):
-                    await self.modlog_item(item, guild)
+                async for item in (await self.reddit.subreddit(subreddit_name)).mod.log(limit=10):
+                    await self.modlog_item(item, guilds)
             except Exception as e:
                 logger.warning("Unable to get items for subreddit r/%s", subreddit_name, exc_info=e)
+
+    async def modlog_item(self, item: Union[asyncpraw.models.ModAction], guilds: List[int]):
+        if not self.modlog.check(item.id):
+            self.modlog.add(item.id)
+        else:
+            return
+        for guild in guilds:
+            if channel := self.bot.get_channel_data(guild, "modlog"):
+                if channel not in self.modlog_started:
+                    await channel.send("-" * 20 + "New Modlog Session" + "-" * 20)
+                    self.modlog_started.append(channel)
+                action = item.action
+                if action in self.SUBMITTABLE_ACTIONS:
+                    prefix = self.SUBMITTABLE_ACTIONS.get(action, action)
+                    embed = discord.Embed(title=f"{prefix}: {item.target_title or item.target_fullname}",
+                                          timestamp=datetime.datetime.utcfromtimestamp(item.created_utc),
+                                          url="https://www.reddit.com" + item.target_permalink)
+                    description = str(item.target_body or item.description or item.details)
+                    if len(description) > 2048:
+                        description = description[:2045] + "..."
+                    embed.description = description
+                    embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
+                    embed.add_field(name="Moderator", value=str(item.mod))
+                    embed.set_footer(text=f"Action ID {item.id}")
+                    await channel.send(embed=embed)
+                elif action in self.USER_ACTIONS:
+                    prefix = self.USER_ACTIONS.get(action, action)
+                    embed = discord.Embed(title=f"{prefix}: {item.target_author or item.target_fullname}",
+                                          timestamp=datetime.datetime.utcfromtimestamp(item.created_utc))
+                    description = str(item.target_body or item.description or item.details)
+                    if len(description) > 2048:
+                        description = description[:2045] + "..."
+                    embed.description = description
+                    embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
+                    embed.add_field(name="Moderator", value=str(item.mod))
+                    embed.set_footer(text=f"Action ID {item.id}")
+                    await channel.send(embed=embed)
+                elif action == "add_community_topics":
+                    prefix = "Add Community Topics"
+                    embed = discord.Embed(title=f"{prefix}: {item.description}",
+                                          timestamp=datetime.datetime.utcfromtimestamp(item.created_utc))
+                    embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
+                    embed.add_field(name="Moderator", value=str(item.mod))
+                    embed.set_footer(text=f"Action ID {item.id}")
+                    await channel.send(embed=embed)
+                elif action == "createrule":
+                    prefix = "Create Rule"
+                    embed = discord.Embed(title=f"{prefix}: {item.details}",
+                                          timestamp=datetime.datetime.utcfromtimestamp(item.created_utc))
+                    embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
+                    embed.add_field(name="Moderator", value=str(item.mod))
+                    embed.set_footer(text=f"Action ID {item.id}")
+                    await channel.send(embed=embed)
+                else:
+                    prefix = action
+                    description = str(item.target_body or item.description or item.details)
+                    embed = discord.Embed(title=f"Other Action: {prefix}",
+                                          timestamp=datetime.datetime.utcfromtimestamp(item.created_utc))
+                    if len(description) > 2048:
+                        description = description[:2045] + "..."
+                    embed.description = description
+                    embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
+                    embed.add_field(name="Moderator", value=str(item.mod))
+                    embed.set_footer(text=f"Action ID {item.id}")
+                    await channel.send(embed=embed)
+
+    @discord.ext.commands.group(name="modlog", invoke_without_command=True, brief="Manage the modlog")
+    async def modlog_command(self, ctx: discord.ext.commands.Context):
+        await self.bot.generic_help(ctx)
+
+    @modlog_command.command(name="add", brief="Add a subreddit to the Guild's modlog channel.", usage="subreddit [subreddit]")
+    async def modlog_add(self, ctx: discord.ext.commands.Context, *subreddits: str):
+        await self.bot.load_session()
+        for subreddit in subreddits:
+            try:
+                subreddit_obj = await self.reddit.subreddit(subreddit, fetch=True)
+            except asyncprawcore.exceptions.Redirect:
+                embed = Embed(ctx, title="Subreddit Does Not Exist", description="The specified subreddit does not exist.", color=discord.Color.red())
+                embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+                await ctx.send(embed=embed)
+            else:
+                try:
+                    async for _ in subreddit_obj.mod.removal_reasons:
+                        break
+                except (asyncpraw.exceptions.PRAWException, asyncprawcore.exceptions.AsyncPrawcoreException):
+                    embed = Embed(ctx, title="No Mod Permissions",
+                                  description="The Reddit account used by the bot does not have the appropriate permissions.",
+                                  color=discord.Color.red())
+                    embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+                    await ctx.send(embed=embed)
+                else:
+                    try:
+                        async with self.bot.conn.execute("""INSERT INTO MODLOG(SUBREDDIT_NAME, GUILD_ID) VALUES (?, ?)""",
+                                                         [subreddit, ctx.guild.id]):
+                            pass
+                    except sqlite3.IntegrityError:
+                        embed = Embed(ctx, title="Subreddit Exists", description="The subreddit is already part of the Guild's modlog.",
+                                      color=discord.Color.red())
+                    else:
+                        embed = Embed(ctx, title="Subreddit Added to Modlog",
+                                      description="The subreddit has been added to the Guild's modlog database.", color=discord.Color.green())
+                    embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+                    await ctx.send(embed=embed)
+
+    @modlog_command.command(name="remove", brief="Remove a subreddit from the Guild's modlog channel.", usage="subreddit [subreddit]",
+                            aliases=["delete"])
+    async def modlog_remove(self, ctx: discord.ext.commands.Context, *subreddits: str):
+        for subreddit in subreddits:
+            async with self.bot.conn.execute("""DELETE FROM MODLOG WHERE SUBREDDIT_NAME==? AND GUILD_ID==?""", [subreddit, ctx.guild.id]):
+                pass
+            embed = Embed(ctx, title="Subreddit Removed From Modlog",
+                          description="The subreddit has been removed from the Guild's modlog database.",
+                          color=discord.Color.green())
+            embed.add_field(name="Subreddit", value=f"r/{subreddit}")
+            await ctx.send(embed=embed)
+
+    @modlog_command.group(name="loop", brief="Get the status of the modlog loop.", aliases=["modlog_loop", "modlogloop"],
+                          invoke_without_command=True)
+    async def modlog_loop(self, ctx: discord.ext.commands.Context):
+        await self.bot.loop_stats(ctx, self.modlog_task, "Modlog")
+
+    @modlog_loop.command(brief="Start the loop")
+    @discord.ext.commands.is_owner()
+    async def start(self, ctx: discord.ext.commands.Context):
+        self.modlog_task.start()
+        await ctx.send(embed=Embed(ctx, title="Loop Started", description="The loop has been started.", color=discord.Color.green()))
+
+    @modlog_loop.command(brief="Stop the loop")
+    @discord.ext.commands.is_owner()
+    async def stop(self, ctx: discord.ext.commands.Context):
+        self.modlog_task.stop()
+        await ctx.send(embed=Embed(ctx, title="Loop Stopped", description="The loop has been stopped.", color=discord.Color.green()))
+
+    @modlog_loop.command(brief="Restart the loop")
+    @discord.ext.commands.is_owner()
+    async def restart(self, ctx: discord.ext.commands.Context):
+        self.modlog_task.restart()
+        await ctx.send(embed=Embed(ctx, title="Loop Restarted", description="The loop has been restarted.", color=discord.Color.green()))
 
     @modqueue_task.error
     async def on_modqueue_error(self, exception: Exception):
@@ -211,27 +499,28 @@ class RedditMod(PokestarBotCog):
         logger.exception("Exception in the unmoderated task, aborting task:", exc_info=exception)
 
     async def on_reaction(self, msg: discord.Message, emoji: Union[discord.PartialEmoji, discord.Emoji, str], user: discord.Member):
+        await self.bot.load_session()
         if user.id == self.bot.user.id or user.bot or msg.author.id != self.bot.user.id:
             return
         embed: discord.Embed = msg.embeds[0]
-        ctx: CustomAuthorContext = await self.bot.get_context(msg, cls=CustomAuthorContext)
+        ctx: CustomContext = await self.bot.get_context(msg, cls=CustomContext)
         ctx.author = user
         #
-        if embed.title == "New Modqueue Item":
+        if embed.title in ["New Modqueue Item", "New Unmoderated Item"]:
             if "✅" in str(emoji):
-                async for item in reddit.info([embed.fields[2].value]):
+                async for item in self.reddit.info([embed.fields[2].value]):
                     await item.mod.approve()
                     embed = Embed(ctx, title="Approved Item", color=discord.Color.green())
                     embed.add_field(name="Fullname", value=item.fullname)
                     return await ctx.send(embed=embed)
             elif "🚫" in str(emoji):
-                async for item in reddit.info([embed.fields[2].value]):
+                async for item in self.reddit.info([embed.fields[2].value]):
                     await self.remove_item(ctx, item, spam=False)
             elif "📛" in str(emoji):
-                async for item in reddit.info([embed.fields[2].value]):
+                async for item in self.reddit.info([embed.fields[2].value]):
                     await self.remove_item(ctx, item, spam=True)
             elif "🔞" in str(emoji):
-                async for item in reddit.info([embed.fields[2].value]):
+                async for item in self.reddit.info([embed.fields[2].value]):
                     await item.mod.nsfw()
                     embed = Embed(ctx, title="Marked Item as NSFW", color=discord.Color.green())
                     embed.add_field(name="Fullname", value=item.fullname)
@@ -239,7 +528,7 @@ class RedditMod(PokestarBotCog):
 
     async def remove_item(self, ctx: discord.ext.commands.Context, item: Union[asyncpraw.models.Comment, asyncpraw.models.Submission], spam: bool):
         subreddit: asyncpraw.models.Subreddit = item.subreddit
-        embed = Embed(ctx, title="Removal Reasons for " + subreddit.display_name_prefixed, description="Type the number of the removal reason.")
+        embed = Embed(ctx, title="Removal Reasons for " + subreddit.display_name, description="Type the number of the removal reason.")
         reasons = [None]
         num = 0
         async for num, reason in aenumerate(subreddit.mod.removal_reasons, start=1):
@@ -258,7 +547,7 @@ class RedditMod(PokestarBotCog):
             await item.mod.remove(spam=spam)
             embed = Embed(ctx, title="Spammed" if spam else "Removed", color=discord.Color.green())
             if rsn is not None:
-                await item.mod.send_removal_message(message=rsn.message, title="Removed Item", type="private")
+                await item.mod.send_removal_message(message=rsn.message, title=rsn.title, type="private")
                 embed.add_field(name="Removal Reason", value=f"{rsn.title}: {rsn.message}")
             else:
                 embed.add_field(name="Removal Reason", value="No Reason")
@@ -273,9 +562,7 @@ class RedditMod(PokestarBotCog):
         guild: discord.Guild = self.bot.get_guild(payload.guild_id)
         user: discord.Member = guild.get_member(payload.user_id)
         emoji = payload.emoji
-        logger.debug(message)
-        logger.debug(user)
-        logger.debug(emoji)
+
         await self.on_reaction(message, emoji, user)
 
 

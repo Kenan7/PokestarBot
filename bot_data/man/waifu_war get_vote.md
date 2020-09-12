@@ -6,7 +6,7 @@ Arguments:
 User Format: `@user` / `Username#XXXX` / `Nickname` / `Username` (if they do not have a nickname)
 
 Examples:
-* `%waifu_war get_vote @PokestarBot#9763`
-* `%waifu_war get_vote Aqua`
-* `%waifu_war get_vote Zero Two`
-* `%waifu_war get_vote 1`
+* `{prefix}waifu_war get_vote @PokestarBot#9763`
+* `{prefix}waifu_war get_vote Aqua`
+* `{prefix}waifu_war get_vote Zero Two`
+* `{prefix}waifu_war get_vote 1`

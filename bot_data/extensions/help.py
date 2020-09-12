@@ -31,7 +31,7 @@ class Help(PokestarBotCog):
             data = file.read().rstrip()
             if not data:
                 return "[No Extended Help]"
-            return data
+            return data.format(prefix=self.bot.command_prefix)
 
     @discord.ext.commands.group(brief="Get the full extended help on a command.", usage="command",
                                 aliases=["extendedhelp", "exthelp", "ext_help", "man"], invoke_without_command=True)
@@ -153,7 +153,7 @@ class CustomHelp(discord.ext.commands.HelpCommand):
             if len(data) > 2048:
                 return data[:2045] + "..."
             else:
-                return data
+                return data.format(prefix=self.bot.command_prefix)
 
     @staticmethod
     async def render(node: anytree.NodeMixin, maxlevel: Optional[int] = None):

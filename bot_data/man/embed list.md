@@ -1,3 +1,3 @@
 List the custom Embeds for the Guild.
 
-Example: `%embed list`
+Example: `{prefix}embed list`

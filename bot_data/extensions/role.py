@@ -32,7 +32,7 @@ class Roles(PokestarBotCog):
                                 usage="subcommand [subcommand_arg_1] [subcommand_arg_2] [...]")
     @discord.ext.commands.guild_only()
     async def role(self, ctx: discord.ext.commands.Context):
-        """Manage the roles of members in the server. This command itself does nothing, but instead has subcommands."""
+        """Manage the roles of members in the Guild. This command itself does nothing, but instead has subcommands."""
         await self.bot.generic_help(ctx)
 
     async def _base(self, remove: bool, ctx: discord.ext.commands.Context, role: discord.Role,

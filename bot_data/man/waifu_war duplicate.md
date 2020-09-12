@@ -4,4 +4,4 @@ Arguments:
 * `bracket_id`: The bracket ID to duplicate from.
 * `name`: The name of the new bracket.
 
-Example: `%waifu_war duplicate 1 Another Waifu War`
+Example: `{prefix}waifu_war duplicate 1 Another Waifu War`

@@ -8,6 +8,6 @@ Note: Using a submission or comment link will only provide information on the su
 Note: Images for NSFW subreddits will not be shown if the channel is not NSFW.
 
 Examples:
-* `%subreddit r/AskReddit`
-* `%subreddit https://www.reddit.com/r/aww`
-* `%subreddit https://www.reddit.com/r/aww r/AskReddit`
+* `{prefix}subreddit r/AskReddit`
+* `{prefix}subreddit https://www.reddit.com/r/aww`
+* `{prefix}subreddit https://www.reddit.com/r/aww r/AskReddit`

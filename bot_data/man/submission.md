@@ -10,5 +10,5 @@ Note: Using a comment link will only show the submission data.
 Note: Images for NSFW submissions will not be shown if the channel is not NSFW.
 
 Examples:
-* `%submission https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more`
-* `%submission https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more https://www.reddit.com/r/mildlyinteresting/comments/ink6nn/the_wick_of_my_candle_looks_like_a_mushroomtree/`
+* `{prefix}submission https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more`
+* `{prefix}submission https://www.reddit.com/r/Catswithjobs/comments/in8x2j/never_wears_a_mask_always_demanding_more_and_more https://www.reddit.com/r/mildlyinteresting/comments/ink6nn/the_wick_of_my_candle_looks_like_a_mushroomtree/`

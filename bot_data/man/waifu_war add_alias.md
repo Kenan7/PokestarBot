@@ -5,5 +5,5 @@ Arguments:
 * `alias`: The alias. Multiple aliases are separated by spaces. Any alias that contains spaces must be quote-escaped.
 
 Examples:
-* `%waifu_war add_alias Emilia Emilia-tan`
-* `%waifu_war add_alias "Boku no Hero Academia" "My Hero Academia" BnHA`
+* `{prefix}waifu_war add_alias Emilia Emilia-tan`
+* `{prefix}waifu_war add_alias "Boku no Hero Academia" "My Hero Academia" BnHA`

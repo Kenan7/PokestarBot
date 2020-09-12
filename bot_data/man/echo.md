@@ -5,5 +5,5 @@ Arguments:
 * `message`: The message to say. All mentions are preserved.
 
 Examples:
-* `%echo 3 Hello world!`
-* `%echo 10 Hi @PokestarBot#9763`
+* `{prefix}echo 3 Hello world!`
+* `{prefix}echo 10 Hi @PokestarBot#9763`

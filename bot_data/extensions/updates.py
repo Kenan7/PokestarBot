@@ -15,10 +15,12 @@ import feedparser
 import pytz
 
 from . import PokestarBotCog
-from ..utils import CustomAuthorContext, Embed, send_embeds_fields
+from ..utils import CustomContext, Embed, send_embeds_fields
 
 if TYPE_CHECKING:
     from ..bot import PokestarBot
+
+NY = pytz.timezone("America/New_York")
 
 
 class Updates(PokestarBotCog):
@@ -403,7 +405,8 @@ class Updates(PokestarBotCog):
                 dest = self.bot.get_channel_data(guild_id, "anime-and-manga-updates")
                 if dest is None:
                     continue
-                await dest.send(dest.guild.get_member(user_id).mention, embed=embed)
+                user = dest.guild.get_member(user_id) or await self.bot.fetch_user(user_id)
+                await dest.send(user.mention, embed=embed)
         async with self.conn.executemany("""INSERT INTO SEEN(SERVICE, ITEM, CHAPTER) VALUES('Guyamoe', ?, ?)""",
                                          [(slug, chap) for chap in new_chaps]):
             pass
@@ -444,7 +447,8 @@ class Updates(PokestarBotCog):
                 dest = self.bot.get_channel_data(guild_id, "anime-and-manga-updates")
                 if dest is None:
                     continue
-                await dest.send(dest.guild.get_member(user_id).mention, embed=embed)
+                user = dest.guild.get_member(user_id) or await self.bot.fetch_user(user_id)
+                await dest.send(user.mention, embed=embed)
         async with self.conn.executemany("""INSERT INTO SEEN(SERVICE, ITEM, CHAPTER) VALUES('MangaDex', ?, ?)""",
                                          [(str(manga_id), chap) for chap in new_chaps]):
             pass
@@ -482,7 +486,8 @@ class Updates(PokestarBotCog):
                 dest = self.bot.get_channel_data(guild_id, "anime-and-manga-updates")
                 if dest is None:
                     continue
-                await dest.send(dest.guild.get_member(user_id).mention, embed=embed)
+                user = dest.guild.get_member(user_id) or await self.bot.fetch_user(user_id)
+                await dest.send(user.mention, embed=embed)
         async with self.conn.executemany("""INSERT OR IGNORE INTO SEEN(SERVICE, ITEM, CHAPTER) VALUES ('Nyaasi', ?, ?)""",
                                          [(anime_name, str(episode)) for episode in episodes.keys()]):
             pass
@@ -554,7 +559,6 @@ class Updates(PokestarBotCog):
 
     @discord.ext.tasks.loop(minutes=5)
     async def check_for_updates(self):
-        logger.debug("Running update check.")
         await self.get_conn()
         await self.bot.load_session()
         async with self.conn.execute("""SELECT DISTINCT SLUG, NAME FROM GUYAMOE WHERE COMPLETED==?""", [False]) as cursor:
@@ -596,10 +600,6 @@ class Updates(PokestarBotCog):
     async def before_check_for_updates(self):
         await self.bot.wait_until_ready()
 
-    @check_for_updates.after_loop
-    async def after_check_for_updates(self):
-        logger.debug("Finished update check.")
-
     @check_for_updates.error
     async def on_check_for_updates_error(self, exception: BaseException):
         logger.exception("Exception occured inside the check_for_updates task: %s", exception, exc_info=exception)
@@ -608,52 +608,46 @@ class Updates(PokestarBotCog):
         if user.id == self.bot.user.id or user.bot or msg.author.id != self.bot.user.id:
             return
         embed: discord.Embed = msg.embeds[0]
-        ctx: CustomAuthorContext = await self.bot.get_context(msg, cls=CustomAuthorContext)
+        ctx: CustomContext = await self.bot.get_context(msg, cls=CustomContext)
         ctx.author = user
         if len(embed.fields) > 1:
             val = embed.fields[1].value
             if val == "Guya.moe":
-                logger.debug("Hit Guyamoe")
                 if embed.title == "Manga Removed":
                     if "✅" in str(emoji):
-                        logger.debug("Hit check mark")
+                        pass
                     elif "🚫" in str(emoji):
-                        logger.debug("Hit undo")
+                        pass
                 else:
                     if "✅" in str(emoji):
-                        logger.debug("Hit add")
                         link = embed.fields[2].value
                         await self.add(ctx, link)
                     elif "🚫" in str(emoji):
-                        logger.debug("Hit remove")
+                        pass
             elif val == "MangaDex":
-                logger.debug("Hit MangaDex")
                 if embed.title == "Manga Removed":
                     if "✅" in str(emoji):
-                        logger.debug("Hit check mark")
+                        pass
                     elif "🚫" in str(emoji):
-                        logger.debug("Hit undo")
+                        pass
                 else:
                     if "✅" in str(emoji):
-                        logger.debug("Hit add")
                         link = embed.fields[2].value
                         await self.add(ctx, link)
                     elif "🚫" in str(emoji):
-                        logger.debug("Hit remove")
+                        pass
             elif val == "Nyaa.si":
-                logger.debug("Hit Nyaasi")
                 if embed.title == "Manga Removed":
                     if "✅" in str(emoji):
-                        logger.debug("Hit check mark")
+                        pass
                     elif "🚫" in str(emoji):
-                        logger.debug("Hit undo")
+                        pass
                 else:
                     if "✅" in str(emoji):
-                        logger.debug("Hit add")
                         link = embed.fields[2].value
                         await self.add(ctx, link)
                     elif "🚫" in str(emoji):
-                        logger.debug("Hit remove")
+                        pass
 
     @discord.ext.commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -664,9 +658,7 @@ class Updates(PokestarBotCog):
         guild: discord.Guild = self.bot.get_guild(payload.guild_id)
         user: discord.Member = guild.get_member(payload.user_id)
         emoji = payload.emoji
-        logger.debug(message)
-        logger.debug(user)
-        logger.debug(emoji)
+
         await self.on_reaction(message, emoji, user)
 
 

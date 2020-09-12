@@ -1,3 +1,3 @@
 View the list of Extensions.
 
-Example: `%extension view`
+Example: `{prefix}extension view`

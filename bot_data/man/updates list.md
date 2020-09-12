@@ -4,5 +4,5 @@ Arguments:
 * `user`: The user to list updates for. If blank, will show updates for all users.
 
 Examples:
-* `%updates list`
-* `%updates list @PokestarBot#9763`
+* `{prefix}updates list`
+* `{prefix}updates list @PokestarBot#9763`

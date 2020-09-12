@@ -5,5 +5,5 @@ Arguments:
 * `channel`: The channel, if the message is not in the current channel.
 
 Examples:
-* `%link 752159027886161990`
-* `%link 752159027886161990 #general`
+* `{prefix}link 752159027886161990`
+* `{prefix}link 752159027886161990 #general`

@@ -6,5 +6,5 @@ Arguments:
 User Format: `@user` / `Username#XXXX` / `Nickname` / `Username` (if they do not have a nickname)
 
 Examples:
-* `%user_id @PokestarBot#9763`
-* `%user_id @PokestarBot#9763 @Rythm#3722`
+* `{prefix}user_id @PokestarBot#9763`
+* `{prefix}user_id @PokestarBot#9763 @Rythm#3722`

@@ -5,5 +5,5 @@ Arguments:
 * `division_id`: The division ID.
 
 Examples:
-* `%waifu_war division 1`
-* `%waifu_war division 1 1`
+* `{prefix}waifu_war division 1`
+* `{prefix}waifu_war division 1 1`

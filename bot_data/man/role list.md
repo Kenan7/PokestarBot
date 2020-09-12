@@ -6,7 +6,7 @@ Arguments:
 Role Format: `@role` / `"Role Name"` (Quotation escape any role names with spaces)
 
 Examples:
-* `%role list`
-* `%role list Role`
-* `%role list "Role with Spaces"`
-* `%role list Role Role2`
+* `{prefix}role list`
+* `{prefix}role list Role`
+* `{prefix}role list "Role with Spaces"`
+* `{prefix}role list Role Role2`

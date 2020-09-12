@@ -7,6 +7,6 @@ Arguments:
 Note: Due to the fact that channels can also be numbers (channel ID), if you want a specific number of messages, you *have to* specify the channel before the number.
 
 Examples:
-* `%chat_log`
-* `%chat_log #general`
-* `%chat_log #memes 50`
+* `{prefix}chat_log`
+* `{prefix}chat_log #general`
+* `{prefix}chat_log #memes 50`

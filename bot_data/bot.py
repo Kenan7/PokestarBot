@@ -4,10 +4,11 @@ import datetime
 import logging
 import os
 import re
-import subprocess
+# import subprocess
+import sqlite3
 import sys
 import traceback
-from typing import Dict, Optional, Union
+from typing import Optional, Tuple, Union
 
 import aiohttp
 import aiosqlite
@@ -16,11 +17,10 @@ import discord.ext.tasks
 import pytz
 
 from bot_data.creds import TOKEN, owner_id
-from bot_data.utils import BoundedList, Embed, StaticNumber, StopCommand, Sum, break_into_groups, send_embeds, send_embeds_fields
+from bot_data.utils import BoundedList, Embed, ReloadingClient, StopCommand, break_into_groups, send_embeds, send_embeds_fields
 
 logger = logging.getLogger(__name__)
 
-stats_type = Dict[Union[int, str], Dict[Union[str, int], Union[Sum, int, Dict[Union[int, str], Union[Sum, StaticNumber]]]]]
 NY = pytz.timezone("America/New_York")
 
 
@@ -42,8 +42,6 @@ class PokestarBot(discord.ext.commands.Bot):
 
     def __init__(self):
         super().__init__("%", max_messages=100, activity=discord.Game("%help"), case_insensitive=True)
-        self.collections = {}
-        self.stats: stats_type = {}
         self.stats_working_on = asyncio.Event()
         self.stats_lock = asyncio.Lock()
         self.pings = BoundedList()
@@ -55,6 +53,8 @@ class PokestarBot(discord.ext.commands.Bot):
         self.conn: Optional[aiosqlite.Connection] = None
         self.channel_data = {}
         self.disabled_commands = {}
+        self.channel_queue = asyncio.Queue()
+        self.disabled_stat_channels = {}
 
         for file in os.listdir(os.path.abspath(os.path.join(__file__, "..", "extensions"))):
             if not file.startswith("_"):
@@ -62,6 +62,8 @@ class PokestarBot(discord.ext.commands.Bot):
                 self.load_extension("bot_data.extensions.{}".format(name))
 
     def get_channel_data(self, guild_id: int, channel_name: str) -> Optional[discord.TextChannel]:
+        if not isinstance(guild_id, int) and hasattr(guild_id, "id"):
+            guild_id = guild_id.id
         guild_data = self.channel_data.get(guild_id, None)
         if guild_data is None:
             return None
@@ -90,6 +92,12 @@ class PokestarBot(discord.ext.commands.Bot):
                 """CREATE TABLE IF NOT EXISTS DISABLED_COMMANDS(ID INTEGER PRIMARY KEY AUTOINCREMENT, GUILD_ID BIGINT NOT NULL, COMMAND_NAME TEXT 
                 NOT NULL, UNIQUE (GUILD_ID, COMMAND_NAME))"""):
             pass
+        async with self.conn.execute(
+                """CREATE TABLE IF NOT EXISTS STAT(ID INTEGER PRIMARY KEY AUTOINCREMENT, GUILD_ID BIGINT NOT NULL, CHANNEL_ID BIGINT NOT NULL, 
+                MESSAGE_ID BIGINT NOT NULL, AUTHOR_ID BIGINT NOT NULL, UNIQUE(GUILD_ID, CHANNEL_ID, MESSAGE_ID))"""):
+            pass
+        async with self.conn.execute("""CREATE TABLE IF NOT EXISTS DISABLED_STATS(ID INTEGER PRIMARY KEY AUTOINCREMENT, GUILD_ID BIGINT NOT NULL, CHANNEL_ID BIGINT NOT NULL, UNIQUE (GUILD_ID, CHANNEL_ID))"""):
+            pass
 
     @staticmethod
     def add_check_recursive(command: discord.ext.commands.Command, check):
@@ -112,6 +120,11 @@ class PokestarBot(discord.ext.commands.Bot):
         for guild_id, command_name in data:
             l = self.disabled_commands.setdefault(guild_id, [])
             l.append(command_name)
+
+    async def get_disabled_channels(self):
+        async with self.conn.execute("""SELECT GUILD_ID, CHANNEL_ID FROM DISABLED_STATS""") as cursor:
+            data = await cursor.fetchall()
+        self.disabled_stat_channels = dict(data)
 
     def has_channel(self, name: str):
         async def predicate(ctx: discord.ext.commands.Context):
@@ -152,8 +165,8 @@ class PokestarBot(discord.ext.commands.Bot):
                     embed = Embed(msg, color=discord.Color.red(), title="Invalid Spoiler Sent", description=warning)
                     embed.add_field(name="Unable to DM",
                                     value="The bot attempted to DM you this information, but was unable to do so due to a Forbidden error, "
-                                          "which means that you have most likely disabled DMs from server members. If you want the bot to DM you "
-                                          "next time instead of messaging you from the bot spam channel, enable DMs from server members.",
+                                          "which means that you have most likely disabled DMs from Guild members. If you want the bot to DM you "
+                                          "next time instead of messaging you from the bot spam channel, enable DMs from Guild members.",
                                     inline=False)
                     embed.add_field(name="Message", value=msg.content, inline=False)
                     await author.send(embed=embed)
@@ -162,8 +175,8 @@ class PokestarBot(discord.ext.commands.Bot):
                     embed = Embed(msg, color=discord.Color.red(), title="Invalid Spoiler Sent", description=warning)
                     embed.add_field(name="Unable to DM",
                                     value="The bot attempted to DM you this information, but was unable to do so due to a Forbidden error, "
-                                          "which means that you have most likely disabled DMs from server members. If you want the bot to DM you "
-                                          "next time instead of messaging you from the bot spam channel, enable DMs from server members.",
+                                          "which means that you have most likely disabled DMs from Guild members. If you want the bot to DM you "
+                                          "next time instead of messaging you from the bot spam channel, enable DMs from Guild members.",
                                     inline=False)
                     await chan.send(embed=embed)
                     embed2 = Embed(msg, color=discord.Color.red(), title="Message Content", description=msg.content)
@@ -175,11 +188,9 @@ class PokestarBot(discord.ext.commands.Bot):
 
     async def load_session(self):
         if self.session is None:
-            self.session = aiohttp.ClientSession()
+            self.session = ReloadingClient(bot=self)
 
     async def on_ready(self):
-        async with self.stats_lock:
-            self.stats.setdefault("messages", {})
         logger.info("Bot ready.")
         print("Bot ready. All future output is going to the log file.")
         await self.get_all_stats()
@@ -246,15 +257,14 @@ class PokestarBot(discord.ext.commands.Bot):
         return "\n".join(lines)
 
     @classmethod
-    async def send_message(cls, location: discord.TextChannel, static_number: Union[StaticNumber, Sum], message: discord.Message,
-                           channel: bool = False,
+    async def send_message(cls, location: discord.TextChannel, static_number: int, message: discord.Message, channel: bool = False,
                            user: discord.Member = None):
-        number = static_number.value
+        number = static_number
         if user:
             if channel:
                 description = ":tada::partying_face: {} has sent {} messages in {}!".format(user.mention, number, message.channel.mention)
             else:
-                description = ":tada::partying_face: {} has sent a total of {} messages to the entire server!".format(user.mention, number)
+                description = ":tada::partying_face: {} has sent a total of {} messages to the entire Guild!".format(user.mention, number)
         else:
             if channel:
                 description = ":tada::partying_face: There has been a total of {} messages sent to the {} channel!".format(number,
@@ -296,25 +306,37 @@ class PokestarBot(discord.ext.commands.Bot):
             return
         await self.stats_working_on.wait()
         async with self.stats_lock:
-            msg_sum = self.stats[guild_id][channel_id]["messages"]
-            guild_sum = self.stats[guild_id]["messages"]
-            user_num = self.stats[guild_id][channel_id][user_id]
-            user_guild_sum = self.stats[guild_id][user_id]
-        if msg_sum.value in [100, 250, 500, 750] or (msg_sum.value % 1000 == 0 and msg_sum.value > 0):
-            if id(msg_sum) not in self.obj_ids or self.obj_ids.setdefault(id(msg_sum), msg_sum.value) < msg_sum.value:
-                self.obj_ids[id(msg_sum)] = msg_sum.value
+            async with self.conn.execute("""SELECT COUNT(MESSAGE_ID) FROM STAT WHERE GUILD_ID==? AND CHANNEL_ID==?""",
+                                         [guild_id, channel_id]) as cursor:
+                msg_sum, = await cursor.fetchone()
+            async with self.conn.execute("""SELECT COUNT(MESSAGE_ID) FROM STAT WHERE GUILD_ID==?""",
+                                         [guild_id]) as cursor:
+                guild_sum, = await cursor.fetchone()
+            async with self.conn.execute("""SELECT COUNT(MESSAGE_ID) FROM STAT WHERE GUILD_ID==? AND CHANNEL_ID==? AND AUTHOR_ID==?""",
+                                         [guild_id, channel_id, user_id]) as cursor:
+                user_num, = await cursor.fetchone()
+            async with self.conn.execute("""SELECT COUNT(MESSAGE_ID) FROM STAT WHERE GUILD_ID==? AND AUTHOR_ID==?""",
+                                         [guild_id, user_id]) as cursor:
+                user_guild_sum, = await cursor.fetchone()
+            msg_sum_id = f"{guild_id}:{channel_id}"
+            guild_sum_id = f"{guild_id}"
+            user_num_id = f"{guild_id}:{channel_id}:{user_id}"
+            user_guild_sum_id = f"{guild_id}:{user_id}"
+        if msg_sum in [100, 250, 500, 750] or (msg_sum % 1000 == 0 and msg_sum > 0):
+            if id(msg_sum_id) not in self.obj_ids or self.obj_ids.setdefault(id(msg_sum_id), msg_sum) < msg_sum:
+                self.obj_ids[id(msg_sum_id)] = msg_sum
                 await self.send_message(chan, msg_sum, message, channel=True)
-        if guild_sum.value % 10000 == 0:
-            if id(guild_sum) not in self.obj_ids or self.obj_ids.setdefault(id(guild_sum), guild_sum.value) < guild_sum.value:
-                self.obj_ids[id(guild_sum)] = guild_sum.value
+        if guild_sum % 10000 == 0:
+            if id(guild_sum_id) not in self.obj_ids or self.obj_ids.setdefault(id(guild_sum_id), guild_sum) < guild_sum:
+                self.obj_ids[id(guild_sum_id)] = guild_sum
                 message = await self.send_message(chan, guild_sum, message)
-        if user_num.value in [100, 250, 500, 750] or (user_num.value % 1000 == 0 and user_num.value > 0):
-            if id(user_num) not in self.obj_ids or self.obj_ids.setdefault(id(user_num), user_num.value) < user_num.value:
-                self.obj_ids[id(user_num)] = user_num.value
+        if user_num in [100, 250, 500, 750] or (user_num % 1000 == 0 and user_num > 0):
+            if id(user_num_id) not in self.obj_ids or self.obj_ids.setdefault(id(user_num_id), user_num) < user_num:
+                self.obj_ids[id(user_num_id)] = user_num
                 await self.send_message(chan, user_num, message, channel=True, user=message.author)
-        if user_guild_sum.value in [100, 250, 500, 750] or (user_guild_sum.value % 1000 == 0 and user_guild_sum.value > 0):
-            if id(user_guild_sum) not in self.obj_ids or self.obj_ids.setdefault(id(user_guild_sum), user_guild_sum.value) < user_guild_sum.value:
-                self.obj_ids[id(user_guild_sum)] = user_guild_sum.value
+        if user_guild_sum in [100, 250, 500, 750] or (user_guild_sum % 1000 == 0 and user_guild_sum > 0):
+            if id(user_guild_sum_id) not in self.obj_ids or self.obj_ids.setdefault(id(user_guild_sum_id), user_guild_sum) < user_guild_sum:
+                self.obj_ids[id(user_guild_sum_id)] = user_guild_sum
                 await self.send_message(chan, user_guild_sum, message, user=message.author)
 
     async def on_command_error(self, ctx: discord.ext.commands.Context, exception: Union[discord.ext.commands.MissingRequiredArgument,
@@ -401,9 +423,17 @@ class PokestarBot(discord.ext.commands.Bot):
             await self.session.close()
         await self.conn.close()
         await super().close()
-        if not self_initiated:
-            subprocess.Popen(["/bin/sh", os.path.abspath(os.path.join(__file__, "..", "terminate-process.sh")), str(os.getpid())], close_fds=True)
+        logger.debug("Self_initiated: %s", self_initiated)
         logger.info("Bot shutdown has finished, running final cleanup and exit.")
+        if self_initiated:
+            return
+        # subprocess.Popen(["/bin/sh", os.path.abspath(os.path.join(__file__, "..", "terminate-process.sh")), str(os.getpid())], close_fds=True)
+
+    async def run_reload(self):
+        logger.critical("Reloading the bot.")
+        await self.close(self_initiated=True)
+        atexit._run_exitfuncs()
+        os.execvp(sys.executable, [sys.executable] + sys.argv)
 
     async def on_connect(self):
         if self.conn is None or not self.conn.is_alive():
@@ -411,6 +441,7 @@ class PokestarBot(discord.ext.commands.Bot):
         await self.pre_create()
         await self.get_channel_mappings()
         await self.get_disabled_commands()
+        await self.get_disabled_channels()
         logger.info("Bot has connected to Discord.")
 
     async def on_disconnect(self):
@@ -424,56 +455,38 @@ class PokestarBot(discord.ext.commands.Bot):
         await ctx.send(embed=embed)
         return await ctx.send_help(ctx.command)
 
-    async def add_stat(self, message: discord.Message):
-        guild_messages_sum = Sum()
-        guild_user_messages_sum = Sum()
+    @staticmethod
+    def message_properties(message: discord.Message) -> Tuple[int, int, int, int]:
+        message_id = message.id
+        author_id = message.author.id
+        channel_id = message.channel.id
+        guild_id = getattr(message.guild, "id", None) or 0
+        return guild_id, channel_id, message_id, author_id
+
+    async def add_stat(self, *messages: discord.Message):
         async with self.stats_lock:
-            message_id = message.id
-            author_id = user_id = message.author.id
-            channel_id = message.channel.id
-            guild_id = getattr(message.guild, "id", None) or 0
-            if message.id in self.stats["messages"]:
-                return
-            else:
-                self.stats["messages"].setdefault(message_id, author_id)
-            guild_data: dict = self.stats.setdefault(guild_id, {"messages": guild_messages_sum})
-            if guild_data["messages"] != guild_messages_sum:
-                guild_messages_sum = guild_data["messages"]
-            guild_user_data = guild_data.setdefault(author_id, guild_user_messages_sum)
-            if guild_user_data != guild_user_messages_sum:
-                guild_user_messages_sum = guild_user_data
-            if channel_id not in guild_data:
-                channel_messages_sum = guild_messages_sum.make_sub_sum()
-                channel_data = guild_data.setdefault(channel_id, {"messages": channel_messages_sum})
-            else:
-                channel_data = guild_data[channel_id]
-                channel_messages_sum = channel_data["messages"]
-            if user_id not in channel_data:
-                channel_user_messages = channel_messages_sum.make_static_number()
-                channel_data.setdefault(user_id, channel_user_messages)
-            else:
-                user_data = channel_data[user_id]
-                channel_user_messages = user_data
-            if channel_user_messages not in guild_user_messages_sum:
-                guild_user_messages_sum.append(channel_user_messages)
-            channel_user_messages += 1
+            try:
+                async with self.conn.execute("""BEGIN IMMEDIATE TRANSACTION"""):
+                    pass
+                async with self.conn.executemany("""INSERT INTO STAT(GUILD_ID, CHANNEL_ID, MESSAGE_ID, AUTHOR_ID) VALUES (?, ?, ?, ?)""",
+                                                 [self.message_properties(message) for message in messages]):
+                    pass
+                await self.conn.commit()
+            except sqlite3.IntegrityError:
+                await self.conn.commit()
 
     async def remove_stat(self, guild_id: int, channel_id: int, *message_ids: int):
         if not self.get_channel_data(guild_id, "message-goals"):
             return
-        async with self.stats_lock:
-            for message_id in message_ids:
-                if message_id not in self.stats["messages"]:
-                    return
-                user_data = self.stats[guild_id][channel_id][self.stats["messages"][message_id]]
-                channel_user_messages = user_data
-                channel_user_messages -= 1
-                self.stats["messages"].pop(message_id)
+        async with self.stats_lock, self.conn.executemany("""DELETE FROM STAT WHERE GUILD_ID==? AND CHANNEL_ID==? AND MESSAGE_ID==?""",
+                                                          [[guild_id, channel_id, msg_id] for msg_id in message_ids]):
+            pass
 
     async def get_all_stats(self):
         logger.warning("Bot is updating message stat cache. Some bot features may be unavailable while this happens.")
         self.stats_working_on.clear()
         await asyncio.gather(*[self.get_guild_stats(guild) for guild in self.guilds])
+        await asyncio.gather(*[self.get_channel_stats() for _ in range(10)])
         self.stats_working_on.set()
         logger.info("Update complete.")
 
@@ -489,22 +502,53 @@ class PokestarBot(discord.ext.commands.Bot):
         # await msg.edit(
         #    content="(**{:.2f}**%) Gathering stats for channel: {}".format((num / len(channels)) * 100,
         #                                                                   channel.mention if hasattr(channel, "mention") else channel))
-        await asyncio.gather(*[self.get_channel_stats(channel) for num, channel in enumerate(channels)])
+        for num, channel in enumerate(channels):
+            await self.channel_queue.put(channel)
 
-    async def get_channel_stats(self, channel: discord.TextChannel):
-        async for message in channel.history(limit=None):
-            await self.add_stat(message)
+    async def get_channel_stats(self):
+        while not self.channel_queue.empty():
+            channel: discord.TextChannel = await self.channel_queue.get()
+            logger.debug("Working on channel %s (guild %s)", channel, channel.guild)
+            async with self.conn.execute("""SELECT MAX(MESSAGE_ID) FROM STAT WHERE GUILD_ID==? AND CHANNEL_ID==?""",
+                                         [getattr(channel.guild, "id", 0), channel.id]) as cursor:
+                val = await cursor.fetchone()
+            if val is None:
+                after = None
+            else:
+                after = val[0]
+            msg_cache = []
+            async for message in channel.history(limit=None, after=after and discord.Object(after), oldest_first=True):
+                msg_cache.append(message)
+                if len(msg_cache) == 100:
+                    await self.add_stat(*msg_cache)
+                    msg_cache = []
+            if msg_cache:
+                await self.add_stat(*msg_cache)
+
+    async def clean_channel_stats(self):
+        while not self.channel_queue.empty():
+            channel: discord.TextChannel = await self.channel_queue.get()
+            async with self.conn.execute("""SELECT MESSAGE_ID FROM STAT WHERE GUILD_ID==? AND CHANNEL_ID==?""",
+                                         [getattr(channel.guild, "id", 0), channel.id]) as cursor:
+                msg_ids = {_id for _id, in await cursor.fetchall()}
+            existing_ids = []
+            async for message in channel.history(limit=None):
+                existing_ids.append(message.id)
+            diff = msg_ids - set(existing_ids)
+            await self.remove_stat(getattr(channel.guild, "id", 0), channel.id, *diff)
 
     async def remove_channel(self, channel: Union[
-        discord.TextChannel, discord.VoiceChannel, discord.DMChannel, discord.GroupChannel, discord.CategoryChannel]):
+        discord.TextChannel, discord.VoiceChannel, discord.DMChannel, discord.GroupChannel, discord.CategoryChannel], _from_stat_reset: bool = False):
         if isinstance(channel, (discord.VoiceChannel, discord.CategoryChannel)) or not self.get_channel_data(channel.guild.id, "message-goals"):
             return
         if hasattr(channel, "guild") and getattr(channel.guild, "id", None):
             guild_id = channel.guild.id
         else:
             guild_id = 0
-        self.stats[guild_id][channel.id]["messages"].delete()
-        self.stats[guild_id].pop(channel.id)
+        async with self.conn.execute("""DELETE FROM STAT WHERE GUILD_ID==? AND CHANNEL_ID==?""", [guild_id, channel.id]):
+            pass
+        if _from_stat_reset:
+            pass  # No purpose yet
 
     async def on_guild_channel_delete(self, channel: Union[discord.TextChannel, discord.VoiceChannel, discord.CategoryChannel]):
         await self.remove_channel(channel)

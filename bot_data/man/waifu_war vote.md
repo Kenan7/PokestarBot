@@ -4,6 +4,6 @@ Arguments:
 * `id_or_name`: The waifu ID or the name of the waifu you want to vote for.
 
 Examples:
-* `%waifu_war vote 1`
-* `%waifu_war vote Aqua`
-* `%waifu_war vote Zero Two`
+* `{prefix}waifu_war vote 1`
+* `{prefix}waifu_war vote Aqua`
+* `{prefix}waifu_war vote Zero Two`

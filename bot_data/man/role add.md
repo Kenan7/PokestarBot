@@ -9,6 +9,6 @@ Member Format:
 * Role: `@role` / `"Role Name"` (Quotation escape any role names with spaces)
 
 Examples:
-* `%role add "Gamer" @PokestarBot#9763`
-* `%role add "Gamer" "Epic Gamer"`
-* `%role add "Gamer" @PokestarBot#9763 @Rythm#3722 "Epic Gamer"`
+* `{prefix}role add "Gamer" @PokestarBot#9763`
+* `{prefix}role add "Gamer" "Epic Gamer"`
+* `{prefix}role add "Gamer" @PokestarBot#9763 @Rythm#3722 "Epic Gamer"`

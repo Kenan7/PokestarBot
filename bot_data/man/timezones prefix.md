@@ -1,3 +1,3 @@
-Gets a list of prefixes for the `%timezones` command.
+Gets a list of prefixes for the `{prefix}timezones` command.
 
-Example: `%timezones prefix`
+Example: `{prefix}timezones prefix`

@@ -1,4 +1,4 @@
-Get the message stats of the channel. This requires the Guild to have a message-goals channel defined under the guild-channel database (`%channel add`).
+Get the message stats of the channel. This requires the Guild to have a message-goals channel defined under the guild-channel database (`{prefix}channel add`).
 
 Arguments:
 * `channel`: The channel to show stats for. Stats for multiple channels can be shown, as long as they are separated with spaces. Defaults to just the current channel.
@@ -8,8 +8,8 @@ Arguments:
 Note: Due to discord.py limitations, you *need* to specify `min_messages` before `limit`. In this case, you can provide 0 for `min_messages`.
 
 Examples:
-* `%stats`
-* `%stats #general`
-* `%stats #general 20`
-* `%stats #general 0 20`
-* `%stats #general #memes`
+* `{prefix}stats`
+* `{prefix}stats #general`
+* `{prefix}stats #general 20`
+* `{prefix}stats #general 0 20`
+* `{prefix}stats #general #memes`

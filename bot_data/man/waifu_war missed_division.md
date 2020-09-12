@@ -4,5 +4,5 @@ Arguments:
 * `user`: The user to check. Defaults to the user calling the command.
 
 Examples:
-* `%waifu_war missed_division`
-* `%waifu_war missed_division @PokestarBot#9763`
+* `{prefix}waifu_war missed_division`
+* `{prefix}waifu_war missed_division @PokestarBot#9763`

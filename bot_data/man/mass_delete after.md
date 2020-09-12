@@ -6,7 +6,7 @@ Arguments:
 * `message`: The message to delete after.
 
 Examples:
-* `%mass_delete after https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
-* `%mass_delete after #general https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
-* `%mass_delete after #general @PokestarBot#9763 https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
-* `%mass_delete after #general @PokestarBot#9763 @Rythm#3722 https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
+* `{prefix}mass_delete after https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
+* `{prefix}mass_delete after #general https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
+* `{prefix}mass_delete after #general @PokestarBot#9763 https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
+* `{prefix}mass_delete after #general @PokestarBot#9763 @Rythm#3722 https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`

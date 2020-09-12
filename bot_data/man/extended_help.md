@@ -4,5 +4,5 @@ Arguments:
 * `command`: The command to get help for.
 
 Examples:
-* `%command help`
-* `%command channel add`
+* `{prefix}command help`
+* `{prefix}command channel add`

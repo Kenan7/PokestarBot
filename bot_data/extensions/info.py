@@ -47,7 +47,7 @@ class Info(PokestarBotCog):
             fields = [("Username", user.mention),
                       ("Created at", user.created_at.replace(tzinfo=pytz.UTC).astimezone(NY).strftime("%A, %B %d, %Y at %I:%M:%S %p"))]
             if user == guild.owner:
-                fields.append(("Server Owner", True))
+                fields.append(("Guild Owner", True))
             if user.guild_permissions.administrator:
                 fields.append(("Administrator", True))
             if user.bot:

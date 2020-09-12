@@ -5,5 +5,5 @@ Arguments:
 * `anime_name`: The name of the anime.
 
 Examples:
-* `%waifu_war anime Demon Slayer`
-* `%waifu_war anime 2 Kill la Kill`
+* `{prefix}waifu_war anime Demon Slayer`
+* `{prefix}waifu_war anime 2 Kill la Kill`

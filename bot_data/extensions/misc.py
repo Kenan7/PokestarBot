@@ -89,16 +89,20 @@ class Misc(PokestarBotCog):
         if len(letters) == 0:
             raise discord.ext.commands.MissingRequiredArgument(inspect.Parameter("letter", kind=inspect.Parameter.POSITIONAL_ONLY))
         letrz = []
+        s = []
         for letter in letters:
             letter = letter.lower()
             if letter == "all":
                 letrz.extend(string.ascii_lowercase)
-            elif letter not in string.ascii_lowercase:
+            elif letter not in string.ascii_lowercase or len(letter) > 1:
                 embed = Embed(ctx, title="Non-letter", description="The provided character is not a letter.", color=discord.Color.red())
                 embed.add_field(name="Character", value=letter)
                 await ctx.send(embed=embed)
             else:
                 letrz.append(letter)
+        for letter in sorted(set(letrz)):
+            s.append(f":regional_indicator_{letter}:")
+        await send_embeds_fields(ctx, Embed(ctx, title="Letter Emojis"), ["\n".join(s)])
 
     @discord.ext.commands.Cog.listener()
     async def on_message(self, message: discord.Message):
