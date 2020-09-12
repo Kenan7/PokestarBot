@@ -5,6 +5,8 @@ Arguments:
 * `min_messages`: The minimum amount of messages a user or channel has to have in order to show up on the list. Defaults to 5.
 * `limit`: The maximum number of users to show. Defaults to no limit.
 
+Channel Format: `#<channel-name>` / `<channel-name>` / `channel_id`
+
 Note: Due to discord.py limitations, you *need* to specify `min_messages` before `limit`. In this case, you can provide 0 for `min_messages`.
 
 Examples:

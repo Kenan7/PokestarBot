@@ -4,7 +4,6 @@ Arguments:
 * `channel`: The name of the voice channel to move to.
 * `users`: The users to move. Multiple different users may be seperated with spaces.
 
-User Format:
 * Individual User: `@user` / `Username#XXXX` / `Nickname` / `Username` (if they do not have a nickname)
 * Role: `@role` / `"Role Name"` (Quotation escape any role names with spaces)
 * Voice Channel: `Voice Channel Name`

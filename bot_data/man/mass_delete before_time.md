@@ -5,6 +5,8 @@ Arguments:
 * `users`: The users to delete messages from. Defaults to all users. Multiple users can be specified with a space.
 * `time`: The time to delete before. Can be provided in multiple formats. All times are assumed to be in NYC time, so UTC-4 during Daylight Savings and UTC-5 otherwise.
 
+Channel Format: `#<channel-name>` / `<channel-name>` / `channel_id`
+
 Time Formats:
 * Date only: `M/D/YY` / `MM/DD/YYYY` / `M-D-YY` / `MN-DD-YYYY` (Assumed to begin at midnight for that day)
 * Time only: `H:M:S` / `HH:MM:SS` / `H-M-S` / `HH-MM-SS` / `H:M:S AM/PM` / `HH:MM:SS AM/PM` / `H-M-S AM/PM` / `HH-MM-SS AM/PM` / `H:M:SAM/PM` / `HH:MM:SSAM/PM` / `H-M-SAM/PM` / `HH-MM-SSAM/PM` (Assumed to be today)

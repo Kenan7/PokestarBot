@@ -5,6 +5,8 @@ Arguments:
 * `users`: The users to delete messages from. Defaults to all users. Multiple users can be specified with a space.
 * `message`: The message to delete after.
 
+Channel Format: `#<channel-name>` / `<channel-name>` / `channel_id`
+
 Examples:
 * `{prefix}mass_delete after https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`
 * `{prefix}mass_delete after #general https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990`

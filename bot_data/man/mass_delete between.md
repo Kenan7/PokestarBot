@@ -6,6 +6,8 @@ Arguments:
 * `after_message`: The message at the top. Will not be deleted.
 * `before_message`: The message at the bottom. Will not be deleted.
 
+Channel Format: `#<channel-name>` / `<channel-name>` / `channel_id`
+
 Examples:
 * `{prefix}mass_delete between https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990 https://discordapp.com/channels/728750698816340028/728756333150470195/752159669681913886`
 * `{prefix}mass_delete between #general https://discordapp.com/channels/728750698816340028/728756333150470195/752159027886161990 https://discordapp.com/channels/728750698816340028/728756333150470195/752159669681913886`

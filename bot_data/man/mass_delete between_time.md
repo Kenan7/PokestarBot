@@ -6,6 +6,8 @@ Arguments:
 * `after_time`: All messages after this time will be deleted.
 * `before_time`: All messages before this time will be deleted.
 
+Channel Format: `#<channel-name>` / `<channel-name>` / `channel_id`
+
 Note: Any arguments that have spaces need to be quoted (surrounded in quotations) due to how discord.py deals with arguments. View the examples for an example.
 
 Time Formats:

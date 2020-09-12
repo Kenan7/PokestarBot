@@ -5,6 +5,8 @@ Arguments:
 * `users`: The users that the messages have to be from. Defaults to all users. Multiple users can be provided, as long as they are separated by spaces.
 * `prefix`: The message prefix. Defaults to `{prefix}`.
 
+Channel Format: `#<channel-name>` / `<channel-name>` / `channel_id`
+
 Examples:
 * `{prefix}replay_mode`
 * `{prefix}replay_mode %help`

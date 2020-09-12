@@ -1,7 +1,9 @@
 Get the ID of a channel.
 
 Arguments:
-* `channel`: The channel. You can either give the name of a channel, or use `#<channel name>`. You can specify multiple channels, as long as there is a space in between each channel.
+* `channel`: The channel to get the ID of.
+
+Channel Format: `#<channel-name>` / `<channel-name>`
 
 Examples:
 * `{prefix}channel_id general`

@@ -5,6 +5,8 @@ Arguments:
 * `users`: The users to delete messages from. Defaults to all users. Multiple users can be specified with a space.
 * `amount`: The amount of messages to delete.
 
+Channel Format: `#<channel-name>` / `<channel-name>` / `channel_id`
+
 Examples:
 * `{prefix}mass_delete 50`
 * `{prefix}mass_delete #general 50`
