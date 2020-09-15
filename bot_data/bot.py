@@ -75,7 +75,7 @@ class PokestarBot(discord.ext.commands.Bot):
 
     def command_disabled(self, ctx: discord.ext.commands.Context):
         if not hasattr(ctx.guild, "id"):
-            return True
+            return False
         guild_data = self.disabled_commands.get(ctx.guild.id, [])
         cmd_name = ctx.command.qualified_name
         for name in guild_data:
@@ -100,11 +100,12 @@ class PokestarBot(discord.ext.commands.Bot):
             pass
 
     @staticmethod
-    def add_check_recursive(command: discord.ext.commands.Command, check):
-        command.add_check(check)
-        if isinstance(command, discord.ext.commands.Group):
-            for subcommand in command.walk_commands():
-                subcommand.add_check(check)
+    def add_check_recursive(command: discord.ext.commands.Command, *checks):
+        for check in checks:
+            command.add_check(check)
+            if isinstance(command, discord.ext.commands.Group):
+                for subcommand in command.walk_commands():
+                    subcommand.add_check(check)
 
     async def get_channel_mappings(self):
         async with self.conn.execute("""SELECT GUILD_ID, CHANNEL_NAME, CHANNEL_ID FROM CHANNEL_DATA""") as cursor:
@@ -131,6 +132,8 @@ class PokestarBot(discord.ext.commands.Bot):
 
     def has_channel(self, name: str):
         async def predicate(ctx: discord.ext.commands.Context):
+            if not ctx.guild:
+                return False
             return bool(self.get_channel_data(ctx.guild.id, name))
 
         return discord.ext.commands.check(predicate)

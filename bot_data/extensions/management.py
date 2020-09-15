@@ -28,17 +28,20 @@ class Management(PokestarBotCog):
 
     @discord.ext.commands.command(brief="Kill the bot")
     @discord.ext.commands.is_owner()
+    @discord.ext.commands.dm_only()
     async def kill(self, _ctx: discord.ext.commands.Context):
         logger.critical("Killing the bot with signal SIGINT.")
         os.kill(os.getpid(), signal.SIGINT)
 
     @discord.ext.commands.command(brief="Reload the bot with an UNIX exec command")
     @discord.ext.commands.is_owner()
+    @discord.ext.commands.dm_only()
     async def reload(self, _ctx: discord.ext.commands.Context):
         await self.bot.run_reload()
 
     @discord.ext.commands.command(brief="Fetch bot logs.", usage="number")
     @discord.ext.commands.is_owner()
+    @discord.ext.commands.dm_only()
     async def logs(self, ctx: discord.ext.commands.Context, number: int = 20):
         with open(os.path.join(base, "bot.log"), "r", encoding="utf-8") as logfile:
             lines = logfile.read().splitlines(False)
@@ -57,7 +60,7 @@ class Management(PokestarBotCog):
         embed.add_field(name="Amount Requested", value=str(number), inline=False)
         await send_embeds(ctx, embed, groups)
 
-    @discord.ext.commands.command(brief="Resets the bot's permission overrides")
+    @discord.ext.commands.command(brief="Resets the bot's permission overrides", enabled=False)
     @discord.ext.commands.has_guild_permissions(administrator=True)
     @discord.ext.commands.guild_only()
     async def reset_perms(self, ctx: discord.ext.commands.Context):
@@ -75,12 +78,12 @@ class Management(PokestarBotCog):
         embed.add_field(name="Number of Channels Reset", value=str(len(channels)))
         await send_embeds_fields(ctx, embed, [("Channels Reset", "\n".join(channels))])
 
-    @discord.ext.commands.group(brief="Work with the guild-channel database", usage="subcommand", invoke_without_command=True)
+    @discord.ext.commands.group(brief="Work with the guild-channel database", usage="subcommand", invoke_without_command=True, significant=True)
     @discord.ext.commands.guild_only()
     async def channel(self, ctx: discord.ext.commands.Context):
         return await self.bot.generic_help(ctx)
 
-    @channel.command(name="add", brief="Add channel to the guild-channel database", usage="name [channel]")
+    @channel.command(name="add", brief="Add channel to the guild-channel database", usage="name [channel]", significant=True)
     @discord.ext.commands.has_guild_permissions(manage_channels=True)
     @discord.ext.commands.guild_only()
     async def channel_add(self, ctx: discord.ext.commands.Context, name: str, channel: Optional[discord.TextChannel] = None):
@@ -115,7 +118,6 @@ class Management(PokestarBotCog):
             coros.append(ctx.send(embed=embed))
             await asyncio.gather(*coros)
 
-
     async def start_message_goals(self, guild: discord.Guild):
         await self.bot.stats_working_on.wait()
         self.bot.stats_working_on.clear()
@@ -123,7 +125,7 @@ class Management(PokestarBotCog):
         await asyncio.gather(*[self.bot.get_channel_stats() for _ in range(10)])
         self.bot.stats_working_on.set()
 
-    @channel.command(name="remove", brief="Delete the channel in the guild-channel database", usage="name", aliases=["delete"])
+    @channel.command(name="remove", brief="Delete the channel in the guild-channel database", usage="name", aliases=["delete"], significant=True)
     @discord.ext.commands.has_guild_permissions(manage_channels=True)
     @discord.ext.commands.guild_only()
     async def channel_remove(self, ctx: discord.ext.commands.Context, name: str):
@@ -159,7 +161,7 @@ class Management(PokestarBotCog):
             fields.append(("Extra Items For Guild (Should Be Deleted)", "\n".join(items) or "None"))
         await send_embeds_fields(ctx, embed, fields)
 
-    @discord.ext.commands.group(brief="Disable a command (or subcommand) for the Guild", usage="command", invoke_without_command=True)
+    @discord.ext.commands.group(brief="Disable a command (or subcommand) for the Guild", usage="command", invoke_without_command=True, significant=True)
     @discord.ext.commands.has_guild_permissions(administrator=True)
     @discord.ext.commands.guild_only()
     async def disable(self, ctx: discord.ext.commands.Context, *, command: str):
@@ -200,7 +202,7 @@ class Management(PokestarBotCog):
         embed = Embed(ctx, title="Disabled Commands", color=discord.Color.green() if len(names) == 0 else discord.Color.red())
         await send_embeds_fields(ctx, embed, [("\u200B", "\n".join(names) or "None")])
 
-    @discord.ext.commands.command(brief="Enable a command (or subcommand) for the Guild", usage="command")
+    @discord.ext.commands.command(brief="Enable a command (or subcommand) for the Guild", usage="command", significant=True)
     @discord.ext.commands.has_guild_permissions(administrator=True)
     @discord.ext.commands.guild_only()
     async def enable(self, ctx: discord.ext.commands.Context, *, command: str):

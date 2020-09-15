@@ -43,9 +43,9 @@ class RedditMod(PokestarBotCog):
         self.modqueue_started = []
         self.modlog_started = []
         self.unmoderated_started = []
-        self.bot.add_check_recursive(self.modqueue_command, self.bot.has_channel("modqueue"))
-        self.bot.add_check_recursive(self.modlog_command, self.bot.has_channel("modlog"))
-        self.bot.add_check_recursive(self.unmoderated_command, self.bot.has_channel("unmoderated"))
+        self.bot.add_check_recursive(self.modqueue_command, self.bot.has_channel("modqueue"), discord.ext.commands.guild_only())
+        self.bot.add_check_recursive(self.modlog_command, self.bot.has_channel("modlog"), discord.ext.commands.guild_only())
+        self.bot.add_check_recursive(self.unmoderated_command, self.bot.has_channel("unmoderated"), discord.ext.commands.guild_only())
         self.modqueue_task.start()
         self.modlog_task.start()
         self.unmoderated_task.start()

@@ -1,8 +1,11 @@
 import itertools
+
 from typing import Iterable, List, Optional, Tuple, Union
 
 import anytree
 import discord.ext.commands
+
+from ..significant_commands import SignificantGroup, SignificantCommand
 
 
 class CommandNode(anytree.NodeMixin):
@@ -13,6 +16,12 @@ class CommandNode(anytree.NodeMixin):
     @property
     def name(self):
         return self.command.name
+    
+    @property
+    def significant(self):
+        if hasattr(self.command, "significant"):
+            return self.command.significant
+        return False
 
     @property
     def brief(self):
@@ -20,7 +29,7 @@ class CommandNode(anytree.NodeMixin):
 
     __slots__ = ("command", "parent")
 
-    def __init__(self, command: discord.ext.commands.Command, parent: Union["BotNode", "GroupNode"]):
+    def __init__(self, command: SignificantCommand, parent: Union["BotNode", "GroupNode"]):
         self.command = command
         self.parent = parent
 
@@ -31,10 +40,10 @@ class CommandNode(anytree.NodeMixin):
         return self.name
 
     def __lt__(self, other: "CommandNode"):
-        return self.name < other.name
+        return (not self.significant, self.name) < (not other.significant, other.name)
 
     def __gt__(self, other: "CommandNode"):
-        return self.name > other.name
+        return (not self.significant, self.name) > (not other.significant, other.name)
 
     def __eq__(self, other: Union[str, "CommandNode"]):
         return (self.name == other) if isinstance(other, str) else (self.command == other.command)
@@ -43,10 +52,10 @@ class CommandNode(anytree.NodeMixin):
         return not (self == other)
 
     def __le__(self, other: "CommandNode"):
-        return self.name <= other.name
+        return (not self.significant, self.name) <= (not other.significant, other.name)
 
     def __ge__(self, other: "CommandNode"):
-        return self.name >= other.name
+        return (not self.significant, self.name) >= (not other.significant, other.name)
 
 
 class GroupNode(CommandNode):
@@ -58,7 +67,7 @@ class GroupNode(CommandNode):
     def commands(self) -> Tuple[discord.ext.commands.Command, ...]:
         return self._commands or self.command.commands
 
-    def __init__(self, command: discord.ext.commands.Group, parent: Union["BotNode", "GroupNode"],
+    def __init__(self, command: SignificantGroup, parent: Union["BotNode", "GroupNode"],
                  commands: Optional[Iterable[discord.ext.commands.Command]] = None):
         super().__init__(command, parent)
         self._commands = tuple(commands or ())

@@ -164,7 +164,7 @@ class Stats(PokestarBotCog):
     @discord.ext.commands.group(invoke_without_command=True,
                                 brief="Manage the printing of message contents in channels that trigger message stats (such as admin channels).",
                                 aliases=["stat_channel", "stats_channels", "stat_channels", "statschannel", "statchannel", "statschannels",
-                                         "statchannels"])
+                                         "statchannels"], significant=True)
     async def stats_channel(self, ctx: discord.ext.commands.Context):
         await self.bot.generic_help(ctx)
 

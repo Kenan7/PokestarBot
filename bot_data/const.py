@@ -8,7 +8,7 @@ help_file_template = "* `{}{}`: **{}**"
 
 # management.py
 log_line = re.compile(r"\((DEBUG|INFO|WARNING|ERROR|CRITICAL)\):")
-channel_types = {"Generic Bot Channels": ["annoucements", "bot-spam"],
+channel_types = {"Generic Bot Channels": ["announcements", "bot-spam"],
                  "Misc. Bot Services"  : ["anime-and-manga-updates", "message-goals", "admin-log"],
                  "Reddit Services"     : ["modqueue", "unmoderated", "modlog"]}
 

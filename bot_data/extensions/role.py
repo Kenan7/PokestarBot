@@ -352,11 +352,11 @@ class Roles(PokestarBotCog):
         await ctx.send(embed=Embed(ctx, title="Starting Generation Of All Snapshots.", color=discord.Color.green()))
         for member in ctx.guild.members:
             await self.snapshot_add(ctx, member)
-        for role in ctx.guild.roles:
+        for role in ctx.guild.roles[1:]:
             await self.snapshot_add(ctx, role)
         await ctx.send(embed=Embed(ctx, title="Finished Generation Of All Snapshots.", color=discord.Color.green()))
 
-    @discord.ext.commands.group(brief="Give yourself a role with the specified color", usage="[member] color", invoke_without_command=True)
+    @discord.ext.commands.group(brief="Give yourself a role with the specified color", usage="[member] color", invoke_without_command=True, significant=True)
     @discord.ext.commands.bot_has_guild_permissions(manage_roles=True)
     async def color(self, ctx: discord.ext.commands.Context, member: Optional[discord.Member], color: ColorConverter):
         member = member or ctx.author
@@ -419,7 +419,7 @@ class Roles(PokestarBotCog):
         await send_embeds_fields(ctx, Embed(ctx, title="Existing Color Roles"), [("Count", str(len(roles))), (
             "Roles", "\n".join(f"{role}: {' '.join(member.mention for member in role.members) or 'No Members'}" for role in roles))])
 
-    @color.command(name="info", brief="Get information about a color", usage="color [color] [...]")
+    @color.command(name="info", brief="Get information about a color", usage="color [color] [...]", significant=True)
     async def color_info(self, ctx: discord.ext.commands.Context, *colors: ColorConverter):
         if len(colors) == 0:
             raise discord.ext.commands.MissingRequiredArgument(inspect.Parameter("color", inspect.Parameter.POSITIONAL_ONLY))
@@ -453,7 +453,7 @@ class Roles(PokestarBotCog):
             embed.add_field(name="User", value=member.mention)
             await ctx.send(embed=embed)
 
-    @color.command(name="clean", brief="Cleans all other roles of color.")
+    @color.command(name="clean", brief="Cleans all other roles of color.", significant=True)
     @discord.ext.commands.bot_has_guild_permissions(manage_roles=True)
     @discord.ext.commands.has_guild_permissions(manage_roles=True)
     async def color_clean_all(self, ctx: discord.ext.commands.Context):

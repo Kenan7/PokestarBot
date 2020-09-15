@@ -17,7 +17,7 @@ NY = pytz.timezone("America/New_York")
 
 class Info(PokestarBotCog):
 
-    @discord.ext.commands.command(brief="Get the ID of a user", usage="[user] [...]", aliases=["userid", "userids", "user_ids"])
+    @discord.ext.commands.command(brief="Get the ID of a user", usage="[user] [...]", aliases=["userid", "userids", "user_ids"], enabled=False)
     async def user_id(self, ctx: discord.ext.commands.Context, *users: discord.Member):
         """Get a user's ID."""
         if len(users) < 1:
@@ -25,7 +25,7 @@ class Info(PokestarBotCog):
         embed = Embed(ctx, title="Requested User IDs", description="Here are the requested User IDs.")
         await send_embeds_fields(ctx, embed, [(str(user), str(user.id)) for user in users], line_template="**{}**")
 
-    @discord.ext.commands.command(brief="Get the ID of a channel", usage="[channel] [...]", aliases=["channelid", "channelids", "channel_ids"])
+    @discord.ext.commands.command(brief="Get the ID of a channel", usage="[channel] [...]", aliases=["channelid", "channelids", "channel_ids"], enabled=False)
     @discord.ext.commands.guild_only()
     async def channel_id(self, ctx: discord.ext.commands.Context,
                          *channels: Union[discord.TextChannel, discord.VoiceChannel, discord.CategoryChannel]):

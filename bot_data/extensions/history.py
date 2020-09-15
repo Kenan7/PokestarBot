@@ -20,7 +20,7 @@ class History(PokestarBotCog):
     def __init__(self, bot: "PokestarBot"):
         super().__init__(bot)
         check = self.bot.has_channel("message-goals")
-        self.bot.add_check_recursive(self.clean_message_goals, check)
+        self.bot.add_check_recursive(self.clean_message_goals, check, discord.ext.commands.guild_only())
 
     @staticmethod
     async def batch_delete(channel: Union[discord.TextChannel, discord.DMChannel, discord.GroupChannel], messages: List[discord.Message]):
@@ -33,7 +33,7 @@ class History(PokestarBotCog):
         return count
 
     @discord.ext.commands.command(brief="Remove `-ad` messages by Paisley Park.")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def prune_ad(self, ctx: discord.ext.commands.Context):
         """Prune all of Paisley Park's `Get double rewards with -ad` messages."""
         channel: discord.TextChannel = self.bot.get_channel_data(ctx.guild.id, "bot-spam")
@@ -46,7 +46,7 @@ class History(PokestarBotCog):
         await ctx.send(embed=embed)
 
     @discord.ext.commands.command(brief="Remove all Embeds post in the channel by the bot.")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def clean_embeds(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel] = None):
         if channel is None:
             channel = ctx.channel
@@ -69,7 +69,7 @@ class History(PokestarBotCog):
             await channel.send(ctx.author.mention, embed=embed)
 
     @discord.ext.commands.command(brief="Remove all messages in the #message-goals channel that are not from the bot.")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def clean_message_goals(self, ctx: discord.ext.commands.Context):
         channel: discord.TextChannel = self.bot.get_channel_data(ctx.guild.id, "message-goals")
         if channel is None:
@@ -114,7 +114,7 @@ class History(PokestarBotCog):
 
     @discord.ext.commands.group(brief="Delete x amount of messages (from all users or certain users).", usage="[channel] [user] [user] [...] amount",
                                 invoke_without_command=True)
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def mass_delete(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel],
                           users: discord.ext.commands.Greedy[discord.Member], amount: int):
         if channel is None:
@@ -139,7 +139,7 @@ class History(PokestarBotCog):
 
     @mass_delete.command(brief="Delete all messages before a message (from all users or certain users).",
                          usage="[channel] [user] [user] [...] message")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def before(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel],
                      users: discord.ext.commands.Greedy[discord.Member], message: discord.Message):
         base = ctx.history(limit=None, before=message)
@@ -155,7 +155,7 @@ class History(PokestarBotCog):
 
     @mass_delete.command(brief="Delete all messages before a certain time (from all users or certain users).",
                          usage="[channel] [user] [user] [...] time")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def before_time(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel],
                           users: discord.ext.commands.Greedy[discord.Member], *, time: TimeConverter):
         if time.dst():
@@ -177,7 +177,7 @@ class History(PokestarBotCog):
 
     @mass_delete.command(brief="Delete all messages after a message (from all users or certain users).",
                          usage="[channel] [user] [user] [...] message")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def after(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel],
                     users: discord.ext.commands.Greedy[discord.Member], message: discord.Message):
         if channel is None:
@@ -195,7 +195,7 @@ class History(PokestarBotCog):
 
     @mass_delete.command(brief="Delete all messages after a certain time (from all users or certain users).",
                          usage="[channel] [user] [user] [...] time")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def after_time(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel],
                          users: discord.ext.commands.Greedy[discord.Member], *, time: TimeConverter):
         time: datetime.datetime
@@ -218,7 +218,7 @@ class History(PokestarBotCog):
 
     @mass_delete.command(brief="Delete all messages between two messages (from all users or certain users).",
                          usage="[channel] [user] [user] [...] after_message before_message")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def between(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel],
                       users: discord.ext.commands.Greedy[discord.Member], after_message: discord.Message, before_message: discord.Message):
         if channel is None:
@@ -237,7 +237,7 @@ class History(PokestarBotCog):
 
     @mass_delete.command(brief="Delete all messages between two times (from all users or certain users).",
                          usage="[channel] [user] [user] [...] after_time before_time")
-    @discord.ext.commands.has_permissions(manage_messages=True)
+    @discord.ext.commands.has_guild_permissions(manage_messages=True)
     async def between_time(self, ctx: discord.ext.commands.Context, channel: Optional[discord.TextChannel],
                            users: discord.ext.commands.Greedy[discord.Member], after_time: TimeConverter, before_time: TimeConverter):
         after_time: datetime.datetime

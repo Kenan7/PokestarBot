@@ -67,7 +67,7 @@ class Waifu(PokestarBotCog):
             return data[0][0]
 
     @discord.ext.commands.group(brief="Main group for the Waifu Wars command", invoke_without_command=True, aliases=["ww", "waifuwar"],
-                                usage="subcommand")
+                                usage="subcommand", significant=True)
     async def waifu_war(self, ctx: discord.ext.commands.Context):
         await self.bot.generic_help(ctx)
 
@@ -109,7 +109,7 @@ class Waifu(PokestarBotCog):
             await ctx.send(embed=Embed(ctx, title="Bracket ID needed", description="A bracket ID needs to be specified.", color=discord.Color.red()))
             raise StopCommand
 
-    @waifu_war.command(brief="Get information on a bracket.", usage="bracket_id", aliases=["getbracket", "gb", "b", "get_bracket"])
+    @waifu_war.command(brief="Get information on a bracket.", usage="bracket_id", aliases=["getbracket", "gb", "b", "get_bracket"], significant=True)
     async def bracket(self, ctx: discord.ext.commands.Context, bracket_id: Optional[int] = None):
         await self.get_conn()
         bracket_id = bracket_id or await self.get_voting(ctx.guild.id)
@@ -199,7 +199,7 @@ class Waifu(PokestarBotCog):
             await send_embeds_fields(ctx, embed, [("Animes", "\n".join(lines) or "None")])
 
     @waifu_war.command(brief="Get the a division in the bracket", usage="[bracket_id] division_id",
-                       aliases=["getdivision", "get_division", "gd", "d"])
+                       aliases=["getdivision", "get_division", "gd", "d"], significant=True)
     async def division(self, ctx: discord.ext.commands.Context, id1: int, id2: Optional[int] = None, *_, _continue=False, _send=True):
         await self.get_conn()
         if id2 is not None:
@@ -416,7 +416,7 @@ class Waifu(PokestarBotCog):
                 pass
         await ctx.send(embed=Embed(ctx, title="Anime Names Normalized", description="Anime Names have been normalized.", color=discord.Color.green()))
 
-    @waifu_war.command(brief="Get information on a waifu", usage="bracket_id waifu_id or waifu_name", aliases=["getwaifu", "w", "get_waifu"])
+    @waifu_war.command(brief="Get information on a waifu", usage="bracket_id waifu_id or waifu_name", aliases=["getwaifu", "w", "get_waifu"], significant=True)
     async def waifu(self, ctx: discord.ext.commands.Context, bracket_id: Optional[int] = None, *, id_or_name: Union[int, str]):
         await self.get_conn()
         bracket_id = bracket_id or await self.get_voting(ctx.guild.id)
@@ -704,7 +704,7 @@ class Waifu(PokestarBotCog):
                     await ctx.send(embed=embed)
                     await self.bracket(ctx)
 
-    @waifu_war.command(brief="Vote on a division", usage="waifu_id", alias=["v"])
+    @waifu_war.command(brief="Vote on a division", usage="waifu_id", alias=["v"], significant=True)
     async def vote(self, ctx: discord.ext.commands.Context, *, id_or_name: Union[int, str]):
         await self.get_conn()
         bracket_id = await self.get_voting(ctx.guild.id)
@@ -798,7 +798,7 @@ class Waifu(PokestarBotCog):
                     await self.guide_step_3(ctx)
 
     @waifu_war.command(brief="Undo your vote", usage="waifu_id_or_name",
-                       alias=["uv", "undo_vote", "undovote", "undo", "revert", "revert_vote", "rv", "revertvote", "unvote"])
+                       alias=["uv", "undo_vote", "undovote", "undo", "revert", "revert_vote", "rv", "revertvote", "unvote"], significant=True)
     async def un_vote(self, ctx: discord.ext.commands.Context, *, id_or_name: Union[int, str]):
         await self.get_conn()
         bracket_id = await self.get_voting(ctx.guild.id)
@@ -939,7 +939,7 @@ class Waifu(PokestarBotCog):
                           ("Voters", "\n".join(ctx.guild.get_member(user_id).mention for user_id, in data) or "None")]
                 return await send_embeds_fields(ctx, embed, fields)
 
-    @waifu_war.command(brief="Get the last division you voted for.", aliases=["lastdivision", "ld"])
+    @waifu_war.command(brief="Get the last division you voted for.", aliases=["lastdivision", "ld"], significant=True)
     async def last_division(self, ctx: discord.ext.commands.Context):
         await self.get_conn()
         bracket_id = await self.get_voting(ctx.guild.id)
@@ -980,7 +980,7 @@ class Waifu(PokestarBotCog):
                 name = (await cursor.fetchone())[0]
             name = name.partition("(")[0].strip()
             if max_division == 1:
-                channel = self.bot.get_channel_data(ctx.guild, "annoucements") or ctx
+                channel = self.bot.get_channel_data(ctx.guild, "announcements") or ctx
                 l_name, l_anime, l_description, l_image_link, l_votes, r_name, r_anime, r_description, r_image_link, r_votes = await self.division(ctx, 1, _send=False)
                 embed = Embed(ctx, title=f"Winner for *{name}*")
                 if l_votes > r_votes:
@@ -1054,7 +1054,7 @@ class Waifu(PokestarBotCog):
             msg = await ctx.send(embed=embed)
             await msg.add_reaction("✅")
 
-    @waifu_war.command(brief="See which divisions a person did not vote for.", usage="user", aliases=["misseddivisions", "md"])
+    @waifu_war.command(brief="See which divisions a person did not vote for.", usage="user", aliases=["misseddivisions", "md"], significant=True)
     async def missed_division(self, ctx: discord.ext.commands.Context, user: discord.Member = None):
         if user is None:
             user = ctx.author

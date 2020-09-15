@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class Misc(PokestarBotCog):
 
-    @discord.ext.commands.command(brief="Say the message `num` times", usage="num message")
+    @discord.ext.commands.command(brief="Say the message `num` times", usage="num message", enabled=False)
     async def echo(self, ctx: discord.ext.commands.Context, num: int, *, message: str):
         if not ctx.author.guild_permissions.administrator and num > 5:
             embed = Embed(ctx, title="Too Many Echoes", description="You hit the echo limit.", color=discord.Color.red())
@@ -84,7 +84,7 @@ class Misc(PokestarBotCog):
                 fields = [("User", message.author.mention), ("Content", text)]
                 return await send_embeds_fields(await self.bot.get_context(message), embed, fields)
 
-    @discord.ext.commands.command(brief="Get the emoji for a specific letter", usage="letter [letter]")
+    @discord.ext.commands.command(brief="Get the emoji for a specific letter", usage="letter [letter]", enabled=False)
     async def letter(self, ctx: discord.ext.commands.Context, *letters: str):
         if len(letters) == 0:
             raise discord.ext.commands.MissingRequiredArgument(inspect.Parameter("letter", kind=inspect.Parameter.POSITIONAL_ONLY))

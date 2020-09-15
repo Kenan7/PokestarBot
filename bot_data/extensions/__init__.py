@@ -2,6 +2,8 @@ from typing import TYPE_CHECKING
 
 import discord.ext.commands
 
+from ..utils.significant_commands import patch
+
 if TYPE_CHECKING:
     from ..bot import PokestarBot
 
@@ -21,3 +23,6 @@ class PokestarBotCog(discord.ext.commands.Cog):
 
     def __init__(self, bot: "PokestarBot"):
         self.bot = bot
+
+
+patch()
