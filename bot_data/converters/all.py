@@ -5,6 +5,6 @@ class AllConverter(discord.ext.commands.Converter):
     All = object()
 
     async def convert(self, ctx: discord.ext.commands.Context, argument: str):
-        if argument == "all":
+        if argument.lower() == "all":
             return self.All
         raise discord.ext.commands.BadArgument(f"{argument} != all")

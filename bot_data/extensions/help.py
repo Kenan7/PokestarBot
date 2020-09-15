@@ -7,6 +7,7 @@ import anytree
 import discord.ext.commands
 
 from . import PokestarBotCog
+from ..const import help_file_dir, help_file_template
 from ..utils import Embed, send_embeds_fields
 from ..utils.nodes import BotNode, CogNode
 
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class Help(PokestarBotCog):
-    HELP_FILE_DIR = os.path.abspath(os.path.join(__file__, "..", "..", "man"))
+    HELP_FILE_DIR = help_file_dir
 
     def help_file_exists(self, command: str):
         file_path = (os.path.join(self.HELP_FILE_DIR, command.lower()).rstrip() + ".md")
@@ -71,7 +72,7 @@ class Help(PokestarBotCog):
         commands = [command.qualified_name for command in self.bot.walk_commands()]
         commands.extend(name for name in self.bot.cogs.keys())
         commands = set(command.lower() + ".md" for command in commands)
-        files = set(os.listdir(self.HELP_FILE_DIR))
+        files = {file for file in os.listdir(self.HELP_FILE_DIR) if file.endswith(".md")}
         difference = files - commands
         for file in difference:
             os.remove(os.path.join(self.HELP_FILE_DIR, file))
@@ -90,9 +91,9 @@ class Help(PokestarBotCog):
 
 
 class CustomHelp(discord.ext.commands.HelpCommand):
-    HELP_FILE_DIR = os.path.abspath(os.path.join(__file__, "..", "..", "man"))
+    HELP_FILE_DIR = help_file_dir
 
-    HELP_PATH_TEMPLATE = "* `{}{}`: **{}**"
+    HELP_PATH_TEMPLATE = help_file_template
 
     def bot_node(self, cog_mode: bool = True, commands: Optional[Iterable[discord.ext.commands.Command]] = None) -> BotNode:
         return BotNode(self.bot, cog_mode=cog_mode, commands=commands)

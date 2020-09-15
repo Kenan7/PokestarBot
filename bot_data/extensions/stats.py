@@ -7,7 +7,7 @@ import discord.ext.commands
 
 from . import PokestarBotCog
 from ..utils import Embed, send_embeds_fields
-
+from ..const import stats_template
 if TYPE_CHECKING:
     from ..bot import PokestarBot
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class Stats(PokestarBotCog):
-    STATS_TEMPLATE = STATS_CHANNEL_TEMPLATE = "* **{}**{}: **{}** messages (max **{}** messages)"
+    STATS_TEMPLATE = STATS_CHANNEL_TEMPLATE = stats_template
 
     def __init__(self, bot: "PokestarBot"):
         super().__init__(bot)

@@ -8,6 +8,7 @@ import pytz
 
 from . import PokestarBotCog
 from ..utils import Embed, break_into_groups, send_embeds, send_embeds_fields
+from ..const import strftime_format
 
 if TYPE_CHECKING:
     from ..bot import PokestarBot
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class Time(PokestarBotCog):
-    STRFTIME_FORMAT = "%A, %B %d, %Y @ %I:%M:%S %p"
+    STRFTIME_FORMAT = strftime_format
 
     @discord.ext.commands.command(brief="Display the time in various timezones", usage="[timezone]")
     async def time(self, ctx: discord.ext.commands.Context, timezone: str = None):

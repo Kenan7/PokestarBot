@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class Embed(PokestarBotCog):
-
     @staticmethod
     def make_directory(guild_id: int):
         path = os.path.abspath(os.path.join(__file__, "..", "..", "embeds", f"g_{guild_id}"))

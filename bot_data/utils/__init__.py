@@ -12,3 +12,5 @@ from .reloading_client import ReloadingClient
 from .send_embeds import send_embeds, send_embeds_fields
 from .soft_stop import StopCommand
 from .sort_long_lines import break_into_groups
+from .get_key import get_key
+from .rgb_string_from_int import rgb_string_from_int

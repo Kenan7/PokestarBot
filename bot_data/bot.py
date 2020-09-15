@@ -124,7 +124,10 @@ class PokestarBot(discord.ext.commands.Bot):
     async def get_disabled_channels(self):
         async with self.conn.execute("""SELECT GUILD_ID, CHANNEL_ID FROM DISABLED_STATS""") as cursor:
             data = await cursor.fetchall()
-        self.disabled_stat_channels = dict(data)
+        self.disabled_stat_channels = {}
+        for guild_id, channel_id in data:
+            l = self.disabled_stat_channels.setdefault(guild_id, [])
+            l.append(channel_id)
 
     def has_channel(self, name: str):
         async def predicate(ctx: discord.ext.commands.Context):
@@ -256,10 +259,10 @@ class PokestarBot(discord.ext.commands.Bot):
             lines.append("> {}".format(line))
         return "\n".join(lines)
 
-    @classmethod
-    async def send_message(cls, location: discord.TextChannel, static_number: int, message: discord.Message, channel: bool = False,
+    async def send_message(self, location: discord.TextChannel, static_number: int, message: discord.Message, channel: bool = False,
                            user: discord.Member = None):
         number = static_number
+        chan: Union[discord.TextChannel, discord.DMChannel, discord.GroupChannel] = message.channel
         if user:
             if channel:
                 description = ":tada::partying_face: {} has sent {} messages in {}!".format(user.mention, number, message.channel.mention)
@@ -290,6 +293,9 @@ class PokestarBot(discord.ext.commands.Bot):
                 content = "**No Content.**"
         else:
             content = "**Message too large.**"
+        if chan.guild:
+            if chan.id in self.disabled_stat_channels.get(chan.guild.id, []):
+                content = "**No Content.**"
         embed.add_field(name="Message", value=content)
         embed.add_field(name="Message URL", value=message.jump_url)
         msg = await location.send(embed=embed)
@@ -406,8 +412,9 @@ class PokestarBot(discord.ext.commands.Bot):
         embed = Embed(ctx, title="Exception During Bot Command", color=discord.Color.red(),
                       description=custom_message or "While processing a bot command, an exception occurred.")
         embed.add_field(name="Exception", value=type(exception).__name__)
-        if isinstance(exception, discord.ext.commands.CommandInvokeError):
+        if isinstance(exception, (discord.ext.commands.CommandInvokeError, discord.ext.commands.ExtensionFailed, discord.ext.commands.ConversionError)):
             embed.add_field(name="Original Exception", value=type(exception.original).__name__)
+            exception = exception.original
         embed.add_field(name="Exception Content", value=str(exception))
         groups = await break_into_groups("".join(traceback.format_exception(type(exception), exception, exception.__traceback__)))
         await ctx.send(f"Pinging {ctx.guild.get_member(self.owner_id).mention}")

@@ -11,19 +11,12 @@ import discord.ext.commands
 
 from . import PokestarBotCog
 from ..utils import ConformingIterator, CustomContext, Embed, StopCommand, send_embeds_fields
+from ..const import Status
 
 if TYPE_CHECKING:
     from ..bot import PokestarBot
 
 logger = logging.getLogger(__name__)
-
-
-class Status(enum.IntEnum):
-    ALL = 0
-    OPEN = 1
-    VOTABLE = 2
-    LOCKED = 4
-    CLOSED = 3
 
 
 class Waifu(PokestarBotCog):
@@ -207,7 +200,7 @@ class Waifu(PokestarBotCog):
 
     @waifu_war.command(brief="Get the a division in the bracket", usage="[bracket_id] division_id",
                        aliases=["getdivision", "get_division", "gd", "d"])
-    async def division(self, ctx: discord.ext.commands.Context, id1: int, id2: Optional[int] = None, *_, _continue=False):
+    async def division(self, ctx: discord.ext.commands.Context, id1: int, id2: Optional[int] = None, *_, _continue=False, _send=True):
         await self.get_conn()
         if id2 is not None:
             bracket_id = id1
@@ -269,6 +262,8 @@ class Waifu(PokestarBotCog):
                            f"[{l_name} (*{l_anime}*)]({l_image_link}) (Waifu ID **{l_id}**)\n[{r_name} (*{r_anime}*)]({r_image_link}) (Waifu ID **"
                            f"{r_id}**)"),
                           (f"Votes for {l_name}", str(data_left)), (f"Votes for {r_name}", str(data_right))]
+                if not _send:
+                    return l_name, l_anime, l_description, l_image_link, int(data_left), r_name, r_anime, r_description, r_image_link, int(data_right)
                 messages = await send_embeds_fields(ctx, embed, fields)
                 msg = messages[0]
                 await msg.add_reaction("⬅️")
@@ -984,40 +979,62 @@ class Waifu(PokestarBotCog):
             async with self.log_and_run("""SELECT NAME FROM BRACKETS WHERE ID==?""", [bracket_id]) as cursor:
                 name = (await cursor.fetchone())[0]
             name = name.partition("(")[0].strip()
-            new_bracket_id = int(await self.create_bracket(ctx, name=name + f" ({additional})"))
-            for i in range(1, max_division + 1):
-                l_name, l_votes, r_name, r_votes = await self.division(ctx, bracket_id, i)
+            if max_division == 1:
+                channel = self.bot.get_channel_data(ctx.guild, "annoucements") or ctx
+                l_name, l_anime, l_description, l_image_link, l_votes, r_name, r_anime, r_description, r_image_link, r_votes = await self.division(ctx, 1, _send=False)
+                embed = Embed(ctx, title=f"Winner for *{name}*")
                 if l_votes > r_votes:
-                    waifu_id = (i * 2) - 1
-                    await self.waifu(ctx, bracket_id=bracket_id, id_or_name=waifu_id)
-                    winner = l_name
-                elif l_votes < r_votes:
-                    waifu_id = (i * 2)
-                    await self.waifu(ctx, bracket_id=bracket_id, id_or_name=waifu_id)
-                    winner = r_name
+                    name, anime, description, image_link, votes = l_name, l_anime, l_description, l_image_link, l_votes
+                    embed.add_field(name="Status", value="Clear Winner")
+                elif l_votes > r_votes:
+                    name, anime, description, image_link, votes = r_name, r_anime, r_description, r_image_link, r_votes
+                    embed.add_field(name="Status", value="Clear Winner")
                 elif l_votes == r_votes:  # We use random number generation.
-                    waifu_id = (i * 2) - (random.randint(0, 1))
-                    await ctx.send(embed=Embed(ctx, title="Tie",
-                                               description=f"The waifus **{l_name}** and **{r_name}** are tired, so a random number was used to "
-                                                           f"determine the winner."))
-                    await self.waifu(ctx, bracket_id=bracket_id, id_or_name=waifu_id)
+                    waifu_id = 2 - random.randint(0, 1)
+                    embed.add_field(name="Status", value="Tie")
+                    embed.description = "The two winning sides have the same amount of votes. A random number generation sequence has been used to determine the winner."
                     if waifu_id % 2 == 0:  # Right
-                        winner = r_name
+                        name, anime, description, image_link, votes = l_name, l_anime, l_description, l_image_link, l_votes
                     else:
-                        winner = l_name
+                        name, anime, description, image_link, votes = r_name, r_anime, r_description, r_image_link, r_votes
                 else:
                     raise ValueError("Values do not make sense", l_name, l_votes, r_name, r_votes)
-                async with self.log_and_run("""INSERT INTO BRACKET_{0}(NAME) VALUES (?)""".format(new_bracket_id), [winner]):
+                fields = [("Waifu Name", name), ("Waifu Anime", anime), ("Waifu Description", description), ("Votes", votes)]
+                embed.set_image(url=image_link)
+                return await send_embeds_fields(channel, embed, fields)
+            else:
+                new_bracket_id = int(await self.create_bracket(ctx, name=name + f" ({additional})"))
+                for i in range(1, max_division + 1):
+                    l_name, l_votes, r_name, r_votes = await self.division(ctx, bracket_id, i)
+                    if l_votes > r_votes:
+                        waifu_id = (i * 2) - 1
+                        await self.waifu(ctx, bracket_id=bracket_id, id_or_name=waifu_id)
+                        winner = l_name
+                    elif l_votes < r_votes:
+                        waifu_id = (i * 2)
+                        await self.waifu(ctx, bracket_id=bracket_id, id_or_name=waifu_id)
+                        winner = r_name
+                    elif l_votes == r_votes:  # We use random number generation.
+                        waifu_id = (i * 2) - (random.randint(0, 1))
+                        await ctx.send(embed=Embed(ctx, title="Tie",
+                                                   description=f"The waifus **{l_name}** and **{r_name}** are tired, so a random number was used to "
+                                                               f"determine the winner."))
+                        await self.waifu(ctx, bracket_id=bracket_id, id_or_name=waifu_id)
+                        if waifu_id % 2 == 0:  # Right
+                            winner = r_name
+                        else:
+                            winner = l_name
+                    else:
+                        raise ValueError("Values do not make sense", l_name, l_votes, r_name, r_votes)
+                    async with self.log_and_run("""INSERT INTO BRACKET_{0}(NAME) VALUES (?)""".format(new_bracket_id), [winner]):
+                        pass
+                embed = Embed(ctx, title="Finalizing", description="The brackets are being finalized.", color=discord.Color.green())
+                embed.add_field(name="Old Bracket ID", value=str(bracket_id))
+                embed.add_field(name="New Bracket ID", value=str(new_bracket_id))
+                await ctx.send(embed=embed)
+                async with self.log_and_run("""UPDATE BRACKETS SET STATUS=? WHERE ID==?""", [Status.VOTABLE, new_bracket_id]):
                     pass
-            embed = Embed(ctx, title="Finalizing", description="The brackets are being finalized.", color=discord.Color.green())
-            embed.add_field(name="Old Bracket ID", value=str(bracket_id))
-            embed.add_field(name="New Bracket ID", value=str(new_bracket_id))
-            await ctx.send(embed=embed)
-            await ctx.trigger_typing()
             async with self.log_and_run("""UPDATE BRACKETS SET STATUS=? WHERE ID==?""", [Status.CLOSED, bracket_id]):
-                pass
-            await asyncio.sleep(1)
-            async with self.log_and_run("""UPDATE BRACKETS SET STATUS=? WHERE ID==?""", [Status.VOTABLE, new_bracket_id]):
                 pass
 
     @waifu_war.command(brief="Start the guide that shows how to use the bot.", aliases=["start", "g", "s"])

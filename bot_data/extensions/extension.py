@@ -46,7 +46,9 @@ class Extension(PokestarBotCog):
                 for key, value in self.bot.extensions.copy().items():
                     try:
                         self.bot.reload_extension(key)
-                    except discord.ext.commands.ExtensionError:
+                    except discord.ext.commands.ExtensionError as exc:
+                        await self.bot.on_command_error(ctx, exc, custom_message="There was an exception while reloading the **{}** extension".format(
+                            extension))
                         failed.append(key)
                     else:
                         successful.append(key)
@@ -57,7 +59,6 @@ class Extension(PokestarBotCog):
                     try:
                         self.bot.reload_extension(extension)
                     except discord.ext.commands.ExtensionError as exc:
-                        logger.exception("Extension reload error:")
                         await self.bot.on_command_error(ctx, exc, custom_message="There was an exception while reloading the **{}** extension".format(
                             extension))
                         failed.append(extension)

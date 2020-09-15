@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 class Code(PokestarBotCog):
-
     async def python_code_base(self, ctx: discord.ext.commands.Context, code: str, is_exec: bool, block_num: Optional[int] = None):
         stdout = io.StringIO()
         stderr = io.StringIO()

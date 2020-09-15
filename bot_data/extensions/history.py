@@ -120,8 +120,9 @@ class History(PokestarBotCog):
         if channel is None:
             channel = ctx.channel
         base = channel.history(limit=None)
+        logger.debug("Users: %s", users)
         if users:
-            base.filter(lambda msg: msg.author in users)
+            base = base.filter(lambda msg: msg.author in users)
         count = 0
         msgs = []
         async for item in base:
@@ -143,7 +144,7 @@ class History(PokestarBotCog):
                      users: discord.ext.commands.Greedy[discord.Member], message: discord.Message):
         base = ctx.history(limit=None, before=message)
         if users:
-            base.filter(lambda msg: msg.author in users)
+            base = base.filter(lambda msg: msg.author in users)
         msgs = await base.flatten()
         num = await self.batch_delete(channel, msgs)
         embed = Embed(ctx, color=discord.Color.green(), title="Deletion Successful", description="The deletion was successful.")
@@ -165,7 +166,7 @@ class History(PokestarBotCog):
             channel = ctx.channel
         base = channel.history(limit=None, before=time)
         if users:
-            base.filter(lambda msg: msg.author in users)
+            base = base.filter(lambda msg: msg.author in users)
         msgs = await base.flatten()
         num = await self.batch_delete(channel, msgs)
         embed = Embed(ctx, color=discord.Color.green(), title="Deletion Successful", description="The deletion was successful.")
@@ -183,7 +184,7 @@ class History(PokestarBotCog):
             channel = ctx.channel
         base = channel.history(limit=None, after=message)
         if users:
-            base.filter(lambda msg: msg.author in users)
+            base = base.filter(lambda msg: msg.author in users)
         msgs = await base.flatten()
         num = await self.batch_delete(channel, msgs)
         embed = Embed(ctx, color=discord.Color.green(), title="Deletion Successful", description="The deletion was successful.")
@@ -206,7 +207,7 @@ class History(PokestarBotCog):
             channel = ctx.channel
         base = channel.history(limit=None, after=time)
         if users:
-            base.filter(lambda msg: msg.author in users)
+            base = base.filter(lambda msg: msg.author in users)
         msgs = await base.flatten()
         num = await self.batch_delete(channel, msgs)
         embed = Embed(ctx, color=discord.Color.green(), title="Deletion Successful", description="The deletion was successful.")
@@ -224,7 +225,7 @@ class History(PokestarBotCog):
             channel = ctx.channel
         base = channel.history(limit=None, after=after_message, before=before_message)
         if users:
-            base.filter(lambda msg: msg.author in users)
+            base = base.filter(lambda msg: msg.author in users)
         msgs = await base.flatten()
         num = await self.batch_delete(channel, msgs)
         embed = Embed(ctx, color=discord.Color.green(), title="Deletion Successful", description="The deletion was successful.")
@@ -253,7 +254,7 @@ class History(PokestarBotCog):
             channel = ctx.channel
         base = channel.history(limit=None, after=after_time, before=before_time)
         if users:
-            base.filter(lambda msg: msg.author in users)
+            base = base.filter(lambda msg: msg.author in users)
         msgs = await base.flatten()
         num = await self.batch_delete(channel, msgs)
         embed = Embed(ctx, color=discord.Color.green(), title="Deletion Successful", description="The deletion was successful.")

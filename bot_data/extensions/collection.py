@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class Collection(PokestarBotCog):
-
     @discord.ext.commands.command(brief="Get Collections in the Collection archive (hard coded)", usage="[name]",
                                   aliases=["collectionarchive", "collection"], enabled=False)
     async def collection_archive(self, ctx: discord.ext.commands.Context, name: str = None):

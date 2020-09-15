@@ -13,6 +13,7 @@ import discord.ext.tasks
 
 from . import PokestarBotCog
 from ..creds import client_id, client_secret, user_agent
+from ..const import subreddit, user, blockquote
 from ..utils import Embed, send_embeds_fields
 from ..utils.nodes import CommentNode, SubmissionNode
 
@@ -23,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 class Reddit(PokestarBotCog):
-    SUBREDDIT = re.compile("r/([A-Za-z0-9_]{1,21})")
-    USER = re.compile("(?:user|u)/([A-Za-z0-9_]{1,32})")
-    BLOCKQUOTE = re.compile(r"^>([^\s>])", re.MULTILINE | re.IGNORECASE | re.UNICODE)
+    SUBREDDIT = subreddit
+    USER = user
+    BLOCKQUOTE = blockquote
 
     @property
     def conn(self):

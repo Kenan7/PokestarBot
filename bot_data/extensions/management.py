@@ -10,6 +10,7 @@ import itertools
 import aiosqlite
 import discord.ext.commands
 
+from ..const import channel_types, log_line
 from . import PokestarBotCog
 from .. import base
 from ..utils import Embed, break_into_groups, send_embeds, send_embeds_fields
@@ -21,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 class Management(PokestarBotCog):
-    log_line = re.compile(r"\((DEBUG|INFO|WARNING|ERROR|CRITICAL)\):")
+    log_line = log_line
 
-    CHANNELS = {"Generic Bot Channels": ["annoucements", "bot-spam"], "Misc. Bot Services": ["anime-and-manga-updates", "message-goals", "admin-log"], "Reddit Services": ["modqueue", "unmoderated", "modlog"]}
+    CHANNELS = channel_types
 
     @discord.ext.commands.command(brief="Kill the bot")
     @discord.ext.commands.is_owner()
@@ -103,18 +104,24 @@ class Management(PokestarBotCog):
             embed.add_field(name="Channel", value=channel.mention)
             await ctx.send(embed=embed)
         else:
+            coros = []
             embed = Embed(ctx, title="Guild-Channel Mapping Added", description="The channel name for this guild has been added.",
                           color=discord.Color.green())
             embed.add_field(name="Guild ID", value=str(guild.id))
             embed.add_field(name="Channel Name", value=name)
             embed.add_field(name="Channel", value=channel.mention)
-            await ctx.send(embed=embed)
             if name == "message-goals":
-                await self.bot.stats_working_on.wait()
-                self.bot.stats_working_on.clear()
-                await self.bot.get_guild_stats(ctx.guild)
-                await asyncio.gather(*[self.bot.get_channel_stats() for _ in range(10)])
-                self.bot.stats_working_on.set()
+                coros.append(self.start_message_goals(ctx.guild))
+            coros.append(ctx.send(embed=embed))
+            await asyncio.gather(*coros)
+
+
+    async def start_message_goals(self, guild: discord.Guild):
+        await self.bot.stats_working_on.wait()
+        self.bot.stats_working_on.clear()
+        await self.bot.get_guild_stats(guild)
+        await asyncio.gather(*[self.bot.get_channel_stats() for _ in range(10)])
+        self.bot.stats_working_on.set()
 
     @channel.command(name="remove", brief="Delete the channel in the guild-channel database", usage="name", aliases=["delete"])
     @discord.ext.commands.has_guild_permissions(manage_channels=True)

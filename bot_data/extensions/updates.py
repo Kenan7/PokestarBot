@@ -16,6 +16,7 @@ import pytz
 
 from . import PokestarBotCog
 from ..utils import CustomContext, Embed, send_embeds_fields
+from ..const import mangadex, guyamoe, nyaasi, horriblesubs
 
 if TYPE_CHECKING:
     from ..bot import PokestarBot
@@ -24,10 +25,10 @@ NY = pytz.timezone("America/New_York")
 
 
 class Updates(PokestarBotCog):
-    GUYAMOE_URL = re.compile(r"https://(?:www\.|)guya\.moe/read/manga/([^/\s]+)")
-    MANGADEX_URL = re.compile(r"https://(?:www\.|)mangadex\.org/(?:title|manga)/([0-9]+)")
-    NYAASI_URL = re.compile(r"https://nyaa.si/view/([0-9]+)")
-    HORRIBLESUBS_TORRENT = re.compile(r"\[HorribleSubs\] ([\S ]+) - ([0-9]+) \[([0-9]+)p\].mkv")
+    GUYAMOE_URL = guyamoe
+    MANGADEX_URL = mangadex
+    NYAASI_URL = nyaasi
+    HORRIBLESUBS_TORRENT = horriblesubs
 
     @property
     def conn(self):

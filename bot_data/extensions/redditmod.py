@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 import sqlite3
-from typing import List, TYPE_CHECKING, Union
+from typing import List, TYPE_CHECKING, Union, Optional
 
 import asyncpraw.exceptions
 import asyncpraw.models
@@ -11,6 +11,8 @@ import discord.ext.commands
 import discord.ext.tasks
 
 from . import PokestarBotCog
+from ..const import submittable_actions, user_actions
+from ..converters import AllConverter
 from ..creds import client_id, client_secret, refresh_token, user_agent
 from ..utils import BoundedDict, CustomContext, Embed, RedditItemStash, aenumerate, send_embeds_fields
 
@@ -21,15 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 class RedditMod(PokestarBotCog):
-    SUBMITTABLE_ACTIONS = {"approvelink": "Approved Submission", "approvecomment": "Approved Comment", "ignorereports": "Ignored Reports For Item",
-                           "removelink": "Removed Link", "removecomment": "Removed Comment", "sticky": "Stickied Item",
-                           "distinguish": "Distinguished Item", "spamcomment": "Spam Comment", "spamlink": "Spam Link", "unsticky": "Unstickied Item",
-                           "lock": "Locked Item", "unlock": "Unlocked Item", "marknsfw": "Marked Item as NSFW",
-                           "unignorereports": "Unignored Reports For Item", "spoiler": "Marked Item As Spoiler",
-                           "unspoiler": "Unmarked Item As Spoiler", "editflair": "Edit Flair Of Item"}
-    USER_ACTIONS = {"addcontributor": "Add Contributor", "banuser": "Ban User", "muteuser": "Mute User", "removecontributor": "Remove Contributor",
-                    "acceptmoderatorinvite": "Accept Moderator Invite", "invitemoderator": "Invite Moderator", "unbanuser": "Unban User",
-                    "unmuteuser": "Unmute User", "setpermissions": "Set User Permissions"}
+    SUBMITTABLE_ACTIONS = submittable_actions
+    USER_ACTIONS = user_actions
 
     @property
     def conn(self):
@@ -91,14 +86,20 @@ class RedditMod(PokestarBotCog):
             except Exception as e:
                 logger.warning("Unable to get items for subreddit r/%s", subreddit_name, exc_info=e)
 
-    async def modqueue_item(self, item: Union[asyncpraw.models.Submission, asyncpraw.models.Comment], guilds: List[int]):
+    async def modqueue_item(self, item: Union[asyncpraw.models.Submission, asyncpraw.models.Comment], guilds: List[int] = None,
+                            _channel: Union[discord.TextChannel, discord.ext.commands.Context] = None):
+        if not (guilds or _channel):
+            raise ValueError("Either 'guilds' or '_channel' has to be specified.")
+        elif guilds is None:
+            guilds = [_channel.guild]
         if not self.modqueue.check(item, getattr(item, "num_reports", 0)):
             self.modqueue.add(item, getattr(item, "num_reports", 0))
         else:
-            return
+            if not _channel:
+                return
         for guild in guilds:
             if channel := self.bot.get_channel_data(guild, "modqueue"):
-                if channel not in self.modqueue_started:
+                if channel not in self.modqueue_started and not _channel:
                     await channel.send("-" * 20 + "New Modqueue Session" + "-" * 20)
                     self.modqueue_started.append(channel)
                 embed = discord.Embed(title="New Modqueue Item", timestamp=datetime.datetime.utcfromtimestamp(item.created_utc),
@@ -128,7 +129,7 @@ class RedditMod(PokestarBotCog):
                         embed.set_image(url=image_url)
                     if hasattr(item, "gallery_data"):  # Gallery
                         fields.append(("Is Gallery", "True"))
-                msg = (await send_embeds_fields(channel, embed, fields))[0]
+                msg = (await send_embeds_fields(_channel or channel, embed, fields))[0]
                 await msg.add_reaction("✅")
                 await msg.add_reaction("🚫")
                 await msg.add_reaction("📛")
@@ -210,6 +211,16 @@ class RedditMod(PokestarBotCog):
         self.modqueue_task.restart()
         await ctx.send(embed=Embed(ctx, title="Loop Restarted", description="The loop has been restarted.", color=discord.Color.green()))
 
+    @modqueue_command.command(name="get", brief="Get the modqueue of a subreddit or all subreddits for the Guild.", usage="[subreddit]")
+    async def modqueue_get(self, ctx: discord.ext.commands.Context, subreddit: Optional[Union[AllConverter, str]] = None):
+        subreddit = subreddit or AllConverter.All
+        if subreddit == AllConverter.All:
+            async with self.conn.execute("""SELECT DISTINCT SUBREDDIT_NAME FROM MODQUEUE WHERE GUILD_ID==?""", [ctx.guild.id]) as cursor:
+                data = await cursor.fetchall()
+            for subreddit_name, in data:
+                async for item in (await self.reddit.subreddit(subreddit_name)).mod.modqueue(limit=None):
+                    await self.modqueue_item(item, _channel=ctx)
+
     @discord.ext.commands.group(name="unmoderated", invoke_without_command=True, brief="Manage the unmoderated")
     async def unmoderated_command(self, ctx: discord.ext.commands.Context):
         await self.bot.generic_help(ctx)
@@ -283,6 +294,16 @@ class RedditMod(PokestarBotCog):
         self.unmoderated_task.restart()
         await ctx.send(embed=Embed(ctx, title="Loop Restarted", description="The loop has been restarted.", color=discord.Color.green()))
 
+    @unmoderated_command.command(name="get", brief="Get the unmoderated of a subreddit or all subreddits for the Guild.", usage="[subreddit]")
+    async def unmoderated_get(self, ctx: discord.ext.commands.Context, subreddit: Optional[Union[AllConverter, str]] = None):
+        subreddit = subreddit or AllConverter.All
+        if subreddit == AllConverter.All:
+            async with self.conn.execute("""SELECT DISTINCT SUBREDDIT_NAME FROM UNMODERATED WHERE GUILD_ID==?""", [ctx.guild.id]) as cursor:
+                data = await cursor.fetchall()
+            for subreddit_name, in data:
+                async for item in (await self.reddit.subreddit(subreddit_name)).mod.unmoderated(limit=None):
+                    await self.unmoderated_item(item, _channel=ctx)
+
     @discord.ext.tasks.loop(minutes=2)
     async def unmoderated_task(self):
         await self.pre_create()
@@ -299,14 +320,20 @@ class RedditMod(PokestarBotCog):
             except Exception as e:
                 logger.warning("Unable to get items for subreddit r/%s", subreddit_name, exc_info=e)
 
-    async def unmoderated_item(self, item: Union[asyncpraw.models.Submission, asyncpraw.models.Comment], guilds: List[int]):
+    async def unmoderated_item(self, item: Union[asyncpraw.models.Submission, asyncpraw.models.Comment], guilds=None,
+                               _channel: Union[discord.TextChannel, discord.ext.commands.Context] = None):
+        if not (guilds or _channel):
+            raise ValueError("Either 'guilds' or '_channel' has to be specified.")
+        elif guilds is None:
+            guilds = [_channel.guild]
         if not self.unmoderated.check(item):
             self.unmoderated.add(item)
         else:
-            return
+            if not _channel:
+                return
         for guild in guilds:
             if channel := self.bot.get_channel_data(guild, "unmoderated"):
-                if channel not in self.unmoderated_started:
+                if channel not in self.unmoderated_started and not _channel:
                     await channel.send("-" * 20 + "New Unmoderated Session" + "-" * 20)
                     self.unmoderated_started.append(channel)
                 embed = discord.Embed(title="New Unmoderated Item", timestamp=datetime.datetime.utcfromtimestamp(item.created_utc),
@@ -326,7 +353,7 @@ class RedditMod(PokestarBotCog):
                     embed.set_image(url=image_url)
                 if hasattr(item, "gallery_data"):  # Gallery
                     fields.append(("Is Gallery", "True"))
-                msg = (await send_embeds_fields(channel, embed, fields))[0]
+                msg = (await send_embeds_fields(_channel or channel, embed, fields))[0]
                 await msg.add_reaction("✅")
                 await msg.add_reaction("🚫")
                 await msg.add_reaction("📛")
@@ -370,7 +397,7 @@ class RedditMod(PokestarBotCog):
                     embed.description = description
                     embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
                     embed.add_field(name="Moderator", value=str(item.mod))
-                    embed.set_footer(text=f"Action ID {item.id}")
+                    embed.set_footer(text=f"Action ID: {item.id}")
                     await channel.send(embed=embed)
                 elif action in self.USER_ACTIONS:
                     prefix = self.USER_ACTIONS.get(action, action)
@@ -382,7 +409,7 @@ class RedditMod(PokestarBotCog):
                     embed.description = description
                     embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
                     embed.add_field(name="Moderator", value=str(item.mod))
-                    embed.set_footer(text=f"Action ID {item.id}")
+                    embed.set_footer(text=f"Action ID: {item.id}")
                     await channel.send(embed=embed)
                 elif action == "add_community_topics":
                     prefix = "Add Community Topics"
@@ -390,7 +417,7 @@ class RedditMod(PokestarBotCog):
                                           timestamp=datetime.datetime.utcfromtimestamp(item.created_utc))
                     embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
                     embed.add_field(name="Moderator", value=str(item.mod))
-                    embed.set_footer(text=f"Action ID {item.id}")
+                    embed.set_footer(text=f"Action ID: {item.id}")
                     await channel.send(embed=embed)
                 elif action == "createrule":
                     prefix = "Create Rule"
@@ -398,7 +425,7 @@ class RedditMod(PokestarBotCog):
                                           timestamp=datetime.datetime.utcfromtimestamp(item.created_utc))
                     embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
                     embed.add_field(name="Moderator", value=str(item.mod))
-                    embed.set_footer(text=f"Action ID {item.id}")
+                    embed.set_footer(text=f"Action ID: {item.id}")
                     await channel.send(embed=embed)
                 else:
                     prefix = action
@@ -410,7 +437,7 @@ class RedditMod(PokestarBotCog):
                     embed.description = description
                     embed.add_field(name="Subreddit", value=item.subreddit_name_prefixed)
                     embed.add_field(name="Moderator", value=str(item.mod))
-                    embed.set_footer(text=f"Action ID {item.id}")
+                    embed.set_footer(text=f"Action ID: {item.id}")
                     await channel.send(embed=embed)
 
     @discord.ext.commands.group(name="modlog", invoke_without_command=True, brief="Manage the modlog")
