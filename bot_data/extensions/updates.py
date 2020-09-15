@@ -16,7 +16,7 @@ import pytz
 
 from . import PokestarBotCog
 from ..utils import CustomContext, Embed, send_embeds_fields
-from ..const import mangadex, guyamoe, nyaasi, horriblesubs
+from ..const import bot_version, mangadex, guyamoe, nyaasi, horriblesubs
 
 if TYPE_CHECKING:
     from ..bot import PokestarBot
@@ -398,6 +398,7 @@ class Updates(PokestarBotCog):
             logger.info("New Chapter: %s chapter %s", name, num_chap)
             link = f"https://guya.moe/read/manga/{slug}/{str(num_chap).replace('.', '-')}"
             embed = discord.Embed(color=discord.Color.green(), title="New Chapter")
+            embed.set_footer(text=f"PokestarBot Version {bot_version}")
             embed.add_field(name="Service", value="Guya.moe")
             embed.add_field(name="Manga", value=name)
             embed.add_field(name="Chapter", value=str(num_chap))
@@ -440,6 +441,7 @@ class Updates(PokestarBotCog):
             chap_id = processed_chapters[chap]
             link = f"https://mangadex.org/chapter/{chap_id}/"
             embed = discord.Embed(color=discord.Color.green(), title="New Chapter")
+            embed.set_footer(text=f"PokestarBot Version {bot_version}")
             embed.add_field(name="Service", value="MangaDex")
             embed.add_field(name="Manga", value=name)
             embed.add_field(name="Chapter", value=chap)
@@ -478,6 +480,7 @@ class Updates(PokestarBotCog):
         for ep in sorted(new_eps):
             logger.info("New Episode: %s episode %s", anime_name, ep)
             embed = discord.Embed(color=discord.Color.green(), title="New Episode")
+            embed.set_footer(text=f"PokestarBot Version {bot_version}")
             embed.add_field(name="Service", value="Nyaa.si")
             embed.add_field(name="Anime", value=anime_name)
             embed.add_field(name="Episode #", value=ep)

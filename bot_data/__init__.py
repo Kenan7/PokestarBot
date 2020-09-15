@@ -1,6 +1,7 @@
 import logging.handlers
 import os
 
+from .const import bot_version
 from .utils import ShutdownStatusFilter, UserChannelFormatter
 
 logger = logging.getLogger(__name__)

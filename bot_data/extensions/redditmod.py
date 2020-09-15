@@ -11,7 +11,7 @@ import discord.ext.commands
 import discord.ext.tasks
 
 from . import PokestarBotCog
-from ..const import submittable_actions, user_actions
+from ..const import bot_version, submittable_actions, user_actions
 from ..converters import AllConverter
 from ..creds import client_id, client_secret, refresh_token, user_agent
 from ..utils import BoundedDict, CustomContext, Embed, RedditItemStash, aenumerate, send_embeds_fields
@@ -104,6 +104,7 @@ class RedditMod(PokestarBotCog):
                     self.modqueue_started.append(channel)
                 embed = discord.Embed(title="New Modqueue Item", timestamp=datetime.datetime.utcfromtimestamp(item.created_utc),
                                       url="https://www.reddit.com" + item.permalink)
+                embed.set_footer(text=f"PokestarBot Version {bot_version}")
                 embed.add_field(name="Subreddit",
                                 value=f"[{item.subreddit.display_name}](https://www.reddit.com/r/{item.subreddit.display_name})")
                 embed.add_field(name="Item Type", value=item.__class__.__name__)
@@ -338,6 +339,7 @@ class RedditMod(PokestarBotCog):
                     self.unmoderated_started.append(channel)
                 embed = discord.Embed(title="New Unmoderated Item", timestamp=datetime.datetime.utcfromtimestamp(item.created_utc),
                                       url="https://www.reddit.com" + item.permalink)
+                embed.set_footer(text=f"PokestarBot Version {bot_version}")
                 embed.add_field(name="Subreddit",
                                 value=f"[{item.subreddit.display_name}](https://www.reddit.com/r/{item.subreddit.display_name})")
                 embed.add_field(name="Item Type", value=item.__class__.__name__)

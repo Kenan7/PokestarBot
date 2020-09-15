@@ -3,6 +3,8 @@ from typing import Union
 
 import discord.ext.commands
 
+from .. import bot_version
+
 
 class Embed(discord.Embed):
     def __init__(self, message_or_context: Union[discord.Message, discord.ext.commands.Context], **kwargs):
@@ -11,3 +13,4 @@ class Embed(discord.Embed):
             kwargs.update(timestamp=datetime.datetime.utcnow())
         super().__init__(**kwargs)
         self.set_author(name=author, icon_url=author.avatar_url_as(size=4096))
+        self.set_footer(text=f"PokestarBot Version {bot_version}")

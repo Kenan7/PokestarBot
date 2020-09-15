@@ -16,6 +16,7 @@ import discord.ext.commands
 import discord.ext.tasks
 import pytz
 
+from bot_data import bot_version
 from bot_data.creds import TOKEN, owner_id
 from bot_data.utils import BoundedList, Embed, ReloadingClient, StopCommand, break_into_groups, send_embeds, send_embeds_fields
 
@@ -279,6 +280,7 @@ class PokestarBot(discord.ext.commands.Bot):
                 description = ":tada::partying_face: There has been a total of {} messages sent to the entire guild!".format(number)
         embed = discord.Embed(timestamp=datetime.datetime.utcnow(), title="Message Goal Reached", color=discord.Color.green(),
                               description=description)
+        embed.set_footer(text=f"PokestarBot Version {bot_version}")
         embed.set_thumbnail(url=message.author.avatar_url_as(size=4096))
         if user:
             if not channel:
