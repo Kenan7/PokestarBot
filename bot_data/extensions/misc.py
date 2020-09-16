@@ -104,6 +104,41 @@ class Misc(PokestarBotCog):
             s.append(f":regional_indicator_{letter}:")
         await send_embeds_fields(ctx, Embed(ctx, title="Letter Emojis"), ["\n".join(s)])
 
+    @discord.ext.commands.group(brief="Work with Github items", invoke_without_command=True)
+    async def github(self, ctx: discord.ext.commands.Context):
+        return await self.bot.generic_help(ctx)
+        """{
+  repository(name: "PokestarBot", owner: "PythonCoderAS") {
+    nameWithOwner
+    name
+    description
+    refs(refPrefix: "refs/heads/") {
+      totalCount
+    }
+    languages(first: 5) {
+      nodes {
+        name
+      }
+      totalCount
+    }
+    createdAt
+    ref(qualifiedName: "master") {
+      target {
+        ... on Commit{
+          history (first:1) {
+            totalCount, 
+            nodes {
+              pushedDate
+            }
+          }
+        }
+      }
+    },
+    
+  }
+}
+"""
+
     @discord.ext.commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         coros = [self.expand_message(message)]

@@ -55,7 +55,7 @@ class Updates(PokestarBotCog):
         return "[{text}]({href})".format(href=href, text=html.unescape(value))
 
     def set_up_parser(self):
-        parser = bbcode.Parser(newline="\n", install_defaults=False, escape_html=False, url_template="[{text}({href})", replace_cosmetic=False)
+        parser = bbcode.Parser(newline="\n", install_defaults=False, escape_html=False, url_template="[{text}]({href})", replace_cosmetic=False)
         parser.add_simple_formatter("b", "**%(value)s**", render_embedded=True)
         parser.add_simple_formatter("i", "*%(value)s*", render_embedded=True)
         parser.add_simple_formatter("u", "__%(value)s__", render_embedded=True)

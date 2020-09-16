@@ -569,7 +569,27 @@ class PokestarBot(discord.ext.commands.Bot):
         await self.remove_channel(channel)
 
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
+        await self.on_delete(payload)
         await self.remove_stat(payload.guild_id, payload.channel_id, payload.message_id)
+
+    async def on_delete(self, payload: discord.RawMessageDeleteEvent):
+        channel = self.get_channel_data(payload.guild_id, "admin-log")
+        if not channel:
+            return
+        else:
+            embed = discord.Embed(title="Message Deleted")
+            async with self.conn.execute("""SELECT AUTHOR_ID FROM STAT WHERE GUILD_ID==? AND CHANNEL_ID==? AND MESSAGE_ID==?""", [payload.guild_id, payload.channel_id, payload.message_id]) as cursor:
+                author_id, = await cursor.fetchone()
+            user = self.get_guild(payload.guild_id).get_member(author_id)
+            if user is None:
+                try:
+                    user = await self.fetch_user(author_id)
+                except discord.NotFound:
+                    return
+            embed.set_footer(text=f"PokestarBot Version {bot_version}")
+            embed.add_field(name="Channel", value=self.get_channel(payload.channel_id).mention)
+            embed.add_field(name="User", value=user.mention)
+            await channel.send(embed=embed)
 
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent):
         await self.remove_stat(payload.guild_id, payload.channel_id, *payload.message_ids)

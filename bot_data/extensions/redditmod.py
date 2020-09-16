@@ -568,7 +568,7 @@ class RedditMod(PokestarBotCog):
         reasons.append(None)
         await ctx.send(embed=embed)
         try:
-            msg = await self.bot.wait_for("message", check=lambda message: message.content.isnumeric(), timeout=60)
+            msg = await self.bot.wait_for("message", check=lambda message: message.content.isnumeric() and message.channel == ctx.channel, timeout=60)
         except asyncio.TimeoutError:
             return await ctx.send(embed=Embed(ctx, title="Cancelled", color=discord.Color.red()))
         else:

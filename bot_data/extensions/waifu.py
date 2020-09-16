@@ -4,7 +4,7 @@ import logging
 import random
 import sqlite3
 import string
-from typing import Callable, Iterable, Literal, Optional, TYPE_CHECKING, Union
+from typing import Callable, Iterable, Literal, Optional, TYPE_CHECKING, Tuple, Union
 
 import aiosqlite
 import discord.ext.commands
@@ -131,11 +131,18 @@ class Waifu(PokestarBotCog):
             lines.append(f"**{waifu_id}**: [{name} (*{anime}*)]({image})")
         await send_embeds_fields(ctx, embed, [("Waifus", "\n".join(lines) or "None")])
 
-    @waifu_war.command(brief="Get information on all brackets.", usage="[state]", aliases=["getbrackets", "gbs", "bs", "get_brackets"])
+    async def no_brackets_exist(self, ctx: discord.ext.commands.Context, state: int):
+        embed = Embed(ctx, title="No Brackets", description="No brackets exist for the given state.", color=discord.Color.red())
+        embed.add_field(name="State", value=str(Status(state)))
+        return await ctx.send(embed=embed)
+
+
+
+    @waifu_war.command(brief="Get information on all brackets.", usage="[state]", aliases=["getbrackets", "gbs", "bs", "get_brackets"], enabled=False)
     async def brackets(self, ctx: discord.ext.commands.Context, state: int = 2):
         await self.get_conn()
         try:
-            enum_obj = Status(state)
+            Status(state)
         except ValueError:
             embed = Embed(ctx, title="Invalid State", description="The provided state was invalid.", color=discord.Color.red())
             embed.add_field(name="State", value=str(state))
@@ -145,58 +152,56 @@ class Waifu(PokestarBotCog):
             if state == Status.ALL:
                 async with self.log_and_run("SELECT ID, NAME, STATUS FROM BRACKETS WHERE GUILD_ID==?", [ctx.guild.id]) as cursor:
                     data = await cursor.fetchall()
-                    embed = Embed(ctx, title="Brackets", description="Here are the brackets for the given state.")
-                    fields = []
-                    for bracket_id, name, status in data:
-                        fields.append((f"{name} (**{enum_obj.name.title()}**)", f"Bracket ID **{bracket_id}**"))
-                    await send_embeds_fields(ctx, embed, fields)
+                if len(data) == 0:
+                    return await self.no_brackets_exist(ctx, 0)
+                embed = Embed(ctx, title="Brackets", description="Here are the brackets for the given state.")
+                fields = []
+                for bracket_id, name, status in data:
+                    fields.append((f"{name} (**{Status(status).title()}**)", f"Bracket ID **{bracket_id}**"))
+                await send_embeds_fields(ctx, embed, fields)
             else:
                 async with self.log_and_run("SELECT ID, NAME FROM BRACKETS WHERE STATUS == ? AND GUILD_ID==?", [state, ctx.guild.id]) as cursor:
                     data = await cursor.fetchall()
                 if len(data) == 0:
-                    embed = Embed(ctx, title="No Brackets", description="No brackets exist for the given state.", color=discord.Color.red())
-                    embed.add_field(name="State", value=str(state))
-                    return await ctx.send(embed=embed)
+                    return await self.no_brackets_exist(ctx, state)
                 else:
                     embed = Embed(ctx, title="Brackets", description="Here are the brackets for the given state.")
-                    embed.add_field(name="State", value=str(state))
+                    embed.add_field(name="State", value=str(Status(state)))
                     fields = []
                     for bracket_id, name in data:
                         fields.append((name, f"Bracket ID **{bracket_id}**"))
                     await send_embeds_fields(ctx, embed, fields)
 
-    @waifu_war.command(brief="Get the different animes in the bracket", usage="bracket_id", aliases=["getanimes", "get_animes", "gas", "as"])
-    async def animes(self, ctx: discord.ext.commands.Context, bracket_id: Optional[int] = None):
+    async def bracket_exists(self, ctx: discord.ext.commands.Context, bracket_id: int):
+        async with self.log_and_run("""SELECT NAME, STATUS FROM BRACKETS WHERE ID==? AND GUILD_ID==?""", [bracket_id, ctx.guild.id]) as cursor:
+            data = await cursor.fetchall()
+        if len(data) != 1:
+            await self.id_does_not_exist(ctx, bracket_id)
+            raise StopCommand
+        else:
+            return data
+
+    @waifu_war.command(brief="Get the different animes in the bracket", usage="bracket_id", aliases=["getanimes", "get_animes", "gas", "as"], enabled=False)
+    async def animes(self, ctx: discord.ext.commands.Context, bracket_id: int):
         await self.get_conn()
         bracket_id = bracket_id or await self.get_voting(ctx.guild.id)
-        if bracket_id is not None:
-            async with self.log_and_run("""SELECT NAME, STATUS FROM BRACKETS WHERE ID==?""", [bracket_id]) as cursor:
+        await self.bracket_exists(ctx, bracket_id)
+        data = self.bracket_exists(ctx, bracket_id)
+        name, status = data[0]
+        embed = Embed(ctx, title=name)
+        embed.add_field(name="Bracket ID", value=str(bracket_id))
+        embed.add_field(name="Status", value=Status(status).name.title())
+        try:
+            async with self.log_and_run(
+                    "SELECT ANIME FROM WAIFUS INNER JOIN BRACKET_{0} ON BRACKET_{0}.NAME = WAIFUS.NAME".format(bracket_id)) as cursor:
                 data = await cursor.fetchall()
-            if len(data) != 1:
-                return await self.id_does_not_exist(ctx, bracket_id)
-            name, status = data[0]
-            embed = Embed(ctx, title=name)
-            embed.add_field(name="Bracket ID", value=str(bracket_id))
-            embed.add_field(name="Status", value=Status(status).name.title())
-            try:
-                async with self.log_and_run(
-                        "SELECT ANIME FROM WAIFUS INNER JOIN BRACKET_{0} ON BRACKET_{0}.NAME = WAIFUS.NAME".format(bracket_id)) as cursor:
-                    data = await cursor.fetchall()
-            except sqlite3.OperationalError:
-                logger.warning("", exc_info=True)
-                return await self.id_does_not_exist(ctx, bracket_id)
-            lines = []
-            for anime in sorted({item for item, in data}):
-                lines.append(f"*{anime}*")
-            await send_embeds_fields(ctx, embed, [("Animes", "\n".join(lines) or "None")])
-        else:
-            embed = Embed(ctx, title="Global Animes")
-            async with self.log_and_run("SELECT ANIME FROM WAIFUS".format(bracket_id)) as cursor:
-                data = await cursor.fetchall()
-            lines = []
-            for anime in sorted({item for item, in data}):
-                lines.append(f"*{anime}*")
-            await send_embeds_fields(ctx, embed, [("Animes", "\n".join(lines) or "None")])
+        except sqlite3.OperationalError:
+            logger.warning("", exc_info=True)
+            return await self.id_does_not_exist(ctx, bracket_id)
+        lines = []
+        for anime in sorted({item for item, in data}):
+            lines.append(f"*{anime}*")
+        await send_embeds_fields(ctx, embed, [("Animes", "\n".join(lines) or "None")])
 
     @waifu_war.command(brief="Get the a division in the bracket", usage="[bracket_id] division_id",
                        aliases=["getdivision", "get_division", "gd", "d"], significant=True)
@@ -306,7 +311,7 @@ class Waifu(PokestarBotCog):
             await send_embeds_fields(ctx, embed, [("Divisions", "\n".join(lines) or "None")])
 
     @waifu_war.command(brief="Get the characters of an anime in the bracket", usage="[bracket_id] anime_name",
-                       aliases=["getanime", "get_anime", "a", "ga"])
+                       aliases=["getanime", "get_anime", "a", "ga"], enabled=False)
     async def anime(self, ctx: discord.ext.commands.Context, bracket_id: Optional[int] = None, *, anime_name: str):
         await self.get_conn()
         bracket_id = bracket_id or await self.get_voting(ctx.guild.id)
@@ -397,7 +402,7 @@ class Waifu(PokestarBotCog):
                 count += 1
         return count
 
-    @waifu_war.command(brief="Normalize cases on the Anime field", aliases=["normalizecases", "normalizeanime", "normalize_cases", "na", "nc"])
+    @waifu_war.command(brief="Normalize cases on the Anime field", aliases=["normalizecases", "normalizeanime", "normalize_cases", "na", "nc"], enabled=False)
     @discord.ext.commands.is_owner()
     async def normalize_anime(self, ctx: discord.ext.commands.Context):
         await self.get_conn()
@@ -551,7 +556,7 @@ class Waifu(PokestarBotCog):
             item_id = data[0]
         await self.waifu(ctx, bracket_id, id_or_name=item_id)
 
-    @waifu_war.command(brief="Lock a bracket", usage="bracket_id", aliases=["lockbracket", "lb"])
+    @waifu_war.command(brief="Lock a bracket", usage="bracket_id", aliases=["lockbracket", "lb"], enabled=False)
     @discord.ext.commands.is_owner()
     async def lock_bracket(self, ctx: discord.ext.commands.Context, bracket_id: Optional[int] = None):
         await self.get_conn()
@@ -1113,8 +1118,8 @@ class Waifu(PokestarBotCog):
             await msg.add_reaction("✅")
 
     @waifu_war.command(brief="See all waifus in the global list of waifus.",
-                       aliases=["ws", "all_waifu", "all_waifus", "aws", "allwaifu", "allwaifus"])
-    async def waifus(self, ctx: discord.ext.commands.Context):
+                       aliases=["ws", "all_waifu", "all_waifus", "aws", "allwaifu", "allwaifus", "globalwaifus", "gws", "g_ws", "global_waifu", "globalwaifu"])
+    async def global_waifus(self, ctx: discord.ext.commands.Context):
         embed = Embed(ctx, title="Global Waifu List")
         async with self.log_and_run("""SELECT ID, NAME, ANIME, IMAGE FROM WAIFUS""") as cursor:
             data = await cursor.fetchall()
@@ -1122,6 +1127,16 @@ class Waifu(PokestarBotCog):
         for waifu_id, name, anime, image in data:
             lines.append(f"**{waifu_id}**: [{name} (*{anime}*)]({image})")
         await send_embeds_fields(ctx, embed, [("Waifus", "\n".join(lines) or "None")])
+
+    @waifu_war.command(brief="See all animes in the global list of waifus.", aliases=["globalanimes", "gas", "g_as"])
+    async def global_animes(self, ctx: discord.ext.commands.Context):
+        embed = Embed(ctx, title="Global Animes")
+        async with self.log_and_run("SELECT ANIME FROM WAIFUS") as cursor:
+            data = await cursor.fetchall()
+        lines = []
+        for anime in sorted({item for item, in data}):
+            lines.append(f"*{anime}*")
+        await send_embeds_fields(ctx, embed, [("Animes", "\n".join(lines) or "None")])
 
     async def guide_step_1(self, ctx: discord.ext.commands.Context):
         await self.get_conn()
