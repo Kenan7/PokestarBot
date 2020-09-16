@@ -3,7 +3,7 @@ from typing import Union
 
 import discord.ext.commands
 
-from .. import bot_version
+from ..const import bot_version
 
 
 class Embed(discord.Embed):
