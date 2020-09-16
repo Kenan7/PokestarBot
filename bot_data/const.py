@@ -3,7 +3,7 @@ import os
 import re
 
 # Global
-bot_version = "3.2.0.2"
+bot_version = "3.2.1"
 
 # help.py
 help_file_dir = os.path.abspath(os.path.join(__file__, "..", "man"))

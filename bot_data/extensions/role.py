@@ -1,6 +1,7 @@
 import inspect
 import itertools
 import logging
+import random
 from typing import Collection, List, Optional, TYPE_CHECKING, Tuple, Union
 
 import discord.ext.commands
@@ -480,6 +481,18 @@ class Roles(PokestarBotCog):
         await send_embeds_fields(ctx, Embed(ctx, title="Pruned Roles", description="All color roles without any members are now pruned.",
                                             color=discord.Color.green()),
                                  [("Roles Pruned", "\n".join(str(role) + " (" + role.mention + ")" for role in cleaned) or "None")])
+
+    @color.command(brief="Give every user without a color a randomized color.")
+    @discord.ext.commands.bot_has_guild_permissions(manage_roles=True)
+    @discord.ext.commands.has_guild_permissions(manage_roles=True)
+    async def random(self, ctx: discord.ext.commands.Context):
+        converter = ColorConverter()
+        for member in ctx.guild.members:
+            roles = self.contains_color_roles(member)
+            if not roles:
+                color = rgb_string_from_int(random.randint(0x000001, 0xFFFFFF))
+                await self.color(ctx, member, await converter.convert(ctx, color))
+        await ctx.send(embed=Embed(ctx, title="Completed", color=discord.Color.green()))
 
 
 def setup(bot: "PokestarBot"):
