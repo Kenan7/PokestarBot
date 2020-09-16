@@ -490,7 +490,7 @@ class Roles(PokestarBotCog):
         for member in ctx.guild.members:
             roles = self.contains_color_roles(member)
             if not roles:
-                color = rgb_string_from_int(random.randint(0x000001, 0xFFFFFF))
+                color = random.choice(list(self.DISCORD_COLORS) + list(self.CSS_COLORS))
                 await self.color(ctx, member, await converter.convert(ctx, color))
         await ctx.send(embed=Embed(ctx, title="Completed", color=discord.Color.green()))
 
