@@ -181,7 +181,7 @@ class Waifu(PokestarBotCog):
         else:
             return data
 
-    @waifu_war.command(brief="Get the different animes in the bracket", usage="bracket_id", aliases=["getanimes", "get_animes", "gas", "as"], enabled=False)
+    @waifu_war.command(brief="Get the different animes in the bracket", usage="bracket_id", aliases=["getanimes", "get_animes", "as"], enabled=False)
     async def animes(self, ctx: discord.ext.commands.Context, bracket_id: int):
         await self.get_conn()
         bracket_id = bracket_id or await self.get_voting(ctx.guild.id)
